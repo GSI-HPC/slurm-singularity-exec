@@ -1,4 +1,4 @@
-singularity-exec.so: main.cpp
+singularity-exec.so: main.cpp Makefile
 	$(CXX) -std=c++2a -O2 -Wall -Wextra -fpic -shared -o $@ $<
 
 install: singularity-exec.so singularity-exec.conf
@@ -18,3 +18,5 @@ help:
 
 clean:
 	rm -f singularity-exec.so
+
+.PHONY: help clean

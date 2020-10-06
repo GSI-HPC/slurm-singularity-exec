@@ -21,16 +21,13 @@
 #include <exception>
 #include <string>
 #include <string_view>
+#include <unistd.h>
 #include <utility>
 #include <vector>
 
 extern "C"
-{
+{ // SPANK include
 #include "spank.h"
-
-  extern const char plugin_name[] = "singularity-exec";
-  extern const char plugin_type[] = "spank";
-  extern const unsigned int plugin_version = 0;
 }
 
 /**
@@ -109,6 +106,17 @@ public:
     return job;
   }
 
+  std::vector<char*>
+  job_argument_vector() const
+  {
+    auto [n, args] = job_arguments();
+    std::vector<char*> r;
+    r.reserve(n);
+    for (int i = 0; i < n; ++i)
+      r.push_back(args[i]);
+    return r;
+  }
+
   char**
   job_env() const
   {
@@ -166,9 +174,15 @@ struct singularity_exec
   }
 
   static int
+  set_no_container(int, const char*, int)
+  {
+    s_container_name.clear();
+    return 0;
+  }
+
+  static int
   init(Buttocks s, const ArgumentVector& args)
   {
-    // slurm_info("singularity-exec init");
     for (std::string_view arg : args)
       {
         slurm_debug("singularity-exec argument: %s", arg.data());
@@ -188,30 +202,41 @@ struct singularity_exec
                       arg.data());
       }
 
-    if (!s.is_remote())
-      {
-        slurm_verbose("singularity-exec: default = %s", s_container_name.c_str());
-        s.register_option("singularity-exec", "<container>",
-                          "name of the requested user space", 2,
-                          set_container_name);
-      }
+    s.register_option(
+        "container", "<name>",
+        ("name of the requested container / user space (default: '"
+         + s_container_name + "')")
+            .c_str(),
+        0, set_container_name);
+    s.register_option("no-container",
+                      "run the job directly on the worker node", 0,
+                      set_no_container);
 
     return 0;
   }
 
   static int
-  setup_container(Buttocks s, const ArgumentVector&)
+  start_container(Buttocks s, const ArgumentVector&)
   {
-    auto [job_n_arguments, job_arguments] = s.job_arguments();
-    if (job_n_arguments < 1)
+    if (s_container_name.empty() || s_singularity_script.empty())
       {
-        slurm_error("No job arguments given.");
+        slurm_verbose("singularity-exec: no container selected. Skipping "
+                      "start_container.");
+        return 0;
+      }
+
+    std::vector<char*> argv = s.job_argument_vector();
+    argv.insert(argv.begin(),
+                { s_singularity_script.data(), s_container_name.data() });
+    argv.push_back(nullptr);
+    if (-1 == execvpe(s_singularity_script.c_str(), argv.data(), s.job_env()))
+      {
+        const auto error = std::strerror(errno);
+        slurm_error("Starting %s in %s failed: %s", argv[0],
+                    s_container_name.c_str(), error);
         return ESPANK_ERROR;
       }
-    s.setenv("SINGULARITY_EXEC_CONTAINER", s_container_name.c_str());
-    s.setenv("SINGULARITY_EXEC_JOB", job_arguments[0]);
-    job_arguments[0] = s_singularity_script.data();
-    return 0;
+    __builtin_unreachable();
   }
 };
 
@@ -224,10 +249,14 @@ extern "C"
   }
 
   int
-  slurm_spank_task_init_privileged(spank_t sp, const int count, char* argv[])
+  slurm_spank_task_init(spank_t sp, const int argc, char* argv[])
   {
-    return singularity_exec::setup_container(sp, { count, argv });
+    return singularity_exec::start_container(sp, { argc, argv });
   }
+
+  extern const char plugin_name[] = "singularity-exec";
+  extern const char plugin_type[] = "spank";
+  extern const unsigned int plugin_version = 0;
 }
 
-// vim: foldmethod=indent sw=2 et
+// vim: foldmethod=marker foldmarker={,} sw=2 et

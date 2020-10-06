@@ -1,2 +1,8 @@
 #!/bin/sh
-exec singularity exec "$SINGULARITY_EXEC_CONTAINER" "$SINGULARITY_EXEC_JOB" "$@"
+run_in() {
+  local container="$1"
+  shift
+  exec singularity exec "$container" "$@"
+}
+
+run_in "$@"
