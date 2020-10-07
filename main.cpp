@@ -101,6 +101,16 @@ public:
     return r == 1;
   }
 
+  /// Return the context, where the code is currently executing
+  static spank_context_t
+  context()
+  {
+    spank_context_t c = spank_context();
+    if (c == S_CTX_ERROR)
+      throw SpankError(ESPANK_ERROR);
+    return c;
+  }
+
   /// Return job arguments as (count, array of c strings) pair
   std::pair<int, char**>
   job_arguments() const
@@ -177,20 +187,60 @@ struct singularity_exec
   inline static std::string s_singularity_script = "/usr/lib/slurm/slurm-singularity-wrapper.sh";
   inline static std::string s_singularity_args = {};
 
+  template <typename F0, typename F1>
+  static int
+  only_once(F0&& on_error, F1&& on_success)
+  {
+    static bool already_called = false;
+    if (already_called)
+      {
+        if (Buttocks::context() == S_CTX_REMOTE)
+          return 0;
+        on_error();
+        return -1;
+      }
+    already_called = true;
+    on_success();
+    return 0;
+  }
+
   /// Set container name from --singularity-container
   static int
   set_container_name(int, const char* optarg, int)
   {
-    s_container_name = optarg;
-    return 0;
+    return only_once(
+        [&] {
+          slurm_error("--singularity-container may not be set twice. It was "
+                      "first set to '%s', then to '%s'.",
+                      s_container_name.c_str(), optarg);
+        },
+        [&] { s_container_name = optarg; });
   }
 
   /// Set singularity arguments from --singularity-args
   static int
   set_singularity_args(int, const char* optarg, int)
   {
-    s_singularity_args = optarg;
-    return 0;
+    return only_once(
+        [&] {
+          slurm_error("--singularity-args may not be set twice. It was first "
+                      "set to '%s', then to '%s'.",
+                      s_singularity_args.c_str(), optarg);
+        },
+        [&] { s_singularity_args = optarg; });
+  }
+
+  /// Add singularity arguments from --singularity-add-args
+  static int
+  add_singularity_args(int, const char* optarg, int)
+  {
+    return only_once(
+        [&] {
+          slurm_error("--singularity-add-args may not be set twice. It was "
+                      "first set to '%s', then to '%s'.",
+                      s_singularity_args.c_str(), optarg);
+        },
+        [&] { (s_singularity_args += ' ') += optarg; });
   }
 
   /// Initialize the plugin: read plugstack.conf config & register options
@@ -248,6 +298,9 @@ struct singularity_exec
              + s_singularity_args + "')")
                 .c_str(),
             0, set_singularity_args);
+        s.register_option("singularity-add-args", "<args>",
+                          "append <args> to the singularity arguments", 10,
+                          add_singularity_args);
 
         return 0;
       }
