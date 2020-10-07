@@ -165,6 +165,7 @@ struct singularity_exec
 {
   inline static std::string s_container_name = {};
   inline static std::string s_singularity_script = "/usr/lib/slurm/slurm-singularity-wrapper.sh";
+  inline static std::string s_singularity_args = {};
 
   static int
   set_container_name(int, const char* optarg, int)
@@ -174,19 +175,29 @@ struct singularity_exec
   }
 
   static int
-  set_no_container(int, const char*, int)
+  set_singularity_args(int, const char* optarg, int)
   {
-    s_container_name.clear();
+    s_singularity_args = optarg;
     return 0;
   }
 
   static int
   init(Buttocks s, const ArgumentVector& args)
   {
+    bool in_args = false;
     for (std::string_view arg : args)
       {
         slurm_debug("singularity-exec argument: %s", arg.data());
-        if (arg.starts_with("default="))
+        if (in_args)
+          {
+            if (arg.ends_with('"'))
+              {
+                in_args = false;
+                arg.remove_suffix(1);
+              }
+            (s_singularity_args += ' ') += arg;
+          }
+        else if (arg.starts_with("default="))
           {
             arg.remove_prefix(8);
             s_container_name = arg;
@@ -195,6 +206,12 @@ struct singularity_exec
           {
             arg.remove_prefix(7);
             s_singularity_script = arg;
+          }
+        else if (arg.starts_with("args=\""))
+          {
+            in_args = true;
+            arg.remove_prefix(6);
+            s_singularity_args = arg;
           }
         else
           slurm_error("singularity-exec plugin: argument in plugstack.conf is "
@@ -208,9 +225,12 @@ struct singularity_exec
          + s_container_name + "')")
             .c_str(),
         0, set_container_name);
-    s.register_option("no-container",
-                      "run the job directly on the worker node", 0,
-                      set_no_container);
+    s.register_option("singularity_args", "<args>",
+                      ("arguments to pass to singularity when containerizing "
+                       "the job (default: '"
+                       + s_singularity_args + "')")
+                          .c_str(),
+                      0, set_singularity_args);
 
     return 0;
   }
@@ -225,6 +245,7 @@ struct singularity_exec
         return 0;
       }
 
+    s.setenv("SLURM_SINGULARITY_ARGS", s_singularity_args.c_str());
     std::vector<char*> argv = s.job_argument_vector();
     argv.insert(argv.begin(),
                 { s_singularity_script.data(), s_container_name.data() });
