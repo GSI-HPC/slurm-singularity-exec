@@ -76,9 +76,12 @@ public:
     const spank_err_t errcode;
 
   public:
-    SpankError(spank_err_t err) : errcode(err)
+    SpankError(spank_err_t err) : errcode(err) {}
+
+    spank_err_t
+    code() const noexcept
     {
-      slurm_error("singularity-exec fatal error: %s", what());
+      return errcode;
     }
 
     const char*
@@ -88,6 +91,7 @@ public:
     }
   };
 
+  /// Return whether the plugin is in a remote context
   bool
   is_remote() const
   {
@@ -97,6 +101,7 @@ public:
     return r == 1;
   }
 
+  /// Return job arguments as (count, array of c strings) pair
   std::pair<int, char**>
   job_arguments() const
   {
@@ -106,6 +111,7 @@ public:
     return job;
   }
 
+  /// Return job arguments as std::vector<c string>
   std::vector<char*>
   job_argument_vector() const
   {
@@ -117,6 +123,7 @@ public:
     return r;
   }
 
+  /// Return all environment variables
   char**
   job_env() const
   {
@@ -125,14 +132,16 @@ public:
     return job_env;
   }
 
+  /// Set environment variable
   void
   setenv(const char* var, const char* val)
   {
     throw_on_error(spank_setenv(handle, var, val, 1));
   }
 
+  /// Add option without argument to srun/sbatch
   void
-  register_option(const char* name, const char* usage, int val,
+  register_switch(const char* name, const char* usage, int val,
                   spank_opt_cb_f callback)
   {
     spank_option opt{ const_cast<char*>(name),
@@ -144,6 +153,7 @@ public:
     throw_on_error(spank_option_register(handle, &opt));
   }
 
+  /// Add option with argument to srun/sbatch
   void
   register_option(const char* name, const char* arginfo, const char* usage,
                   int val, spank_opt_cb_f callback)
@@ -167,6 +177,7 @@ struct singularity_exec
   inline static std::string s_singularity_script = "/usr/lib/slurm/slurm-singularity-wrapper.sh";
   inline static std::string s_singularity_args = {};
 
+  /// Set container name from --container
   static int
   set_container_name(int, const char* optarg, int)
   {
@@ -174,6 +185,7 @@ struct singularity_exec
     return 0;
   }
 
+  /// Set singularity arguments from --singularity_args
   static int
   set_singularity_args(int, const char* optarg, int)
   {
@@ -181,83 +193,104 @@ struct singularity_exec
     return 0;
   }
 
+  /// Initialize the plugin: read plugstack.conf config & register options
   static int
   init(Buttocks s, const ArgumentVector& args)
   {
-    bool in_args = false;
-    for (std::string_view arg : args)
+    try
       {
-        slurm_debug("singularity-exec argument: %s", arg.data());
-        if (in_args)
+        bool in_args = false;
+        for (std::string_view arg : args)
           {
-            if (arg.ends_with('"'))
+            slurm_debug("singularity-exec argument: %s", arg.data());
+            if (in_args)
               {
-                in_args = false;
-                arg.remove_suffix(1);
+                if (arg.ends_with('"'))
+                  {
+                    in_args = false;
+                    arg.remove_suffix(1);
+                  }
+                (s_singularity_args += ' ') += arg;
               }
-            (s_singularity_args += ' ') += arg;
+            else if (arg.starts_with("default="))
+              {
+                arg.remove_prefix(8);
+                s_container_name = arg;
+              }
+            else if (arg.starts_with("script="))
+              {
+                arg.remove_prefix(7);
+                s_singularity_script = arg;
+              }
+            else if (arg.starts_with("args=\""))
+              {
+                in_args = true;
+                arg.remove_prefix(6);
+                s_singularity_args = arg;
+              }
+            else
+              slurm_error(
+                  "singularity-exec plugin: argument in plugstack.conf is "
+                  "invalid: '%s'",
+                  arg.data());
           }
-        else if (arg.starts_with("default="))
-          {
-            arg.remove_prefix(8);
-            s_container_name = arg;
-          }
-        else if (arg.starts_with("script="))
-          {
-            arg.remove_prefix(7);
-            s_singularity_script = arg;
-          }
-        else if (arg.starts_with("args=\""))
-          {
-            in_args = true;
-            arg.remove_prefix(6);
-            s_singularity_args = arg;
-          }
-        else
-          slurm_error("singularity-exec plugin: argument in plugstack.conf is "
-                      "invalid: '%s'",
-                      arg.data());
+
+        s.register_option(
+            "container", "<name>",
+            ("name of the requested container / user space (default: '"
+             + s_container_name + "')")
+                .c_str(),
+            0, set_container_name);
+        s.register_option(
+            "singularity_args", "<args>",
+            ("arguments to pass to singularity when containerizing "
+             "the job (default: '"
+             + s_singularity_args + "')")
+                .c_str(),
+            0, set_singularity_args);
+
+        return 0;
       }
-
-    s.register_option(
-        "container", "<name>",
-        ("name of the requested container / user space (default: '"
-         + s_container_name + "')")
-            .c_str(),
-        0, set_container_name);
-    s.register_option("singularity_args", "<args>",
-                      ("arguments to pass to singularity when containerizing "
-                       "the job (default: '"
-                       + s_singularity_args + "')")
-                          .c_str(),
-                      0, set_singularity_args);
-
-    return 0;
+    catch (const Buttocks::SpankError& err)
+      {
+        slurm_error("singularity-exec error: %s", err.what());
+        return -err.code();
+      }
   }
 
+  /// execvpe the s_singularity_script for the job
   static int
   start_container(Buttocks s, const ArgumentVector&)
   {
-    if (s_container_name.empty() || s_singularity_script.empty())
+    try
       {
-        slurm_verbose("singularity-exec: no container selected. Skipping "
-                      "start_container.");
-        return 0;
-      }
+        if (s_container_name.empty() || s_singularity_script.empty())
+          {
+            slurm_verbose("singularity-exec: no container selected. Skipping "
+                          "start_container.");
+            return 0;
+          }
 
-    s.setenv("SLURM_SINGULARITY_ARGS", s_singularity_args.c_str());
-    std::vector<char*> argv = s.job_argument_vector();
-    argv.insert(argv.begin(),
-                { s_singularity_script.data(), s_container_name.data() });
-    argv.push_back(nullptr);
-    if (-1 == execvpe(s_singularity_script.c_str(), argv.data(), s.job_env()))
-      {
-        const auto error = std::strerror(errno);
-        slurm_error("Starting %s in %s failed: %s", argv[0],
-                    s_container_name.c_str(), error);
-        return ESPANK_ERROR;
+        s.setenv("SLURM_SINGULARITY_ARGS", s_singularity_args.c_str());
+        std::vector<char*> argv = s.job_argument_vector();
+        argv.insert(argv.begin(),
+                    { s_singularity_script.data(), s_container_name.data() });
+        argv.push_back(nullptr);
+        if (-1
+            == execvpe(s_singularity_script.c_str(), argv.data(), s.job_env()))
+          {
+            const auto error = std::strerror(errno);
+            slurm_error("Starting %s in %s failed: %s", argv[0],
+                        s_container_name.c_str(), error);
+            return -ESPANK_ERROR;
+          }
+        __builtin_unreachable();
       }
-    __builtin_unreachable();
+    catch (const Buttocks::SpankError& err)
+      {
+        slurm_error("singularity-exec error: %s", err.what());
+        return -err.code();
+      }
   }
 };
 
