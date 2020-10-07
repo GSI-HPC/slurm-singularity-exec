@@ -177,7 +177,7 @@ struct singularity_exec
   inline static std::string s_singularity_script = "/usr/lib/slurm/slurm-singularity-wrapper.sh";
   inline static std::string s_singularity_args = {};
 
-  /// Set container name from --container
+  /// Set container name from --singularity-container
   static int
   set_container_name(int, const char* optarg, int)
   {
@@ -185,7 +185,7 @@ struct singularity_exec
     return 0;
   }
 
-  /// Set singularity arguments from --singularity_args
+  /// Set singularity arguments from --singularity-args
   static int
   set_singularity_args(int, const char* optarg, int)
   {
@@ -236,13 +236,13 @@ struct singularity_exec
           }
 
         s.register_option(
-            "container", "<name>",
+            "singularity-container", "<name>",
             ("name of the requested container / user space (default: '"
              + s_container_name + "')")
                 .c_str(),
             0, set_container_name);
         s.register_option(
-            "singularity_args", "<args>",
+            "singularity-args", "<args>",
             ("arguments to pass to singularity when containerizing "
              "the job (default: '"
              + s_singularity_args + "')")
