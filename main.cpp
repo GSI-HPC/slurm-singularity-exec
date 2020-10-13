@@ -30,6 +30,16 @@ extern "C"
 #include "spank.h"
 }
 
+/// string_view::starts_with replacement
+bool
+starts_with(const std::string_view& s, const std::string_view& prefix)
+{
+  if (prefix.length() > s.length())
+    return false;
+  else
+    return prefix == s.substr(0, prefix.length());
+}
+
 /**
  * A type to wrap (argc, argv) into a proper container.
  */
@@ -255,24 +265,24 @@ struct singularity_exec
             slurm_debug("singularity-exec argument: %s", arg.data());
             if (in_args)
               {
-                if (arg.ends_with('"'))
+                if (arg.back() == '"')
                   {
                     in_args = false;
                     arg.remove_suffix(1);
                   }
                 (s_singularity_args += ' ') += arg;
               }
-            else if (arg.starts_with("default="))
+            else if (starts_with(arg, "default="))
               {
                 arg.remove_prefix(8);
                 s_container_name = arg;
               }
-            else if (arg.starts_with("script="))
+            else if (starts_with(arg, "script="))
               {
                 arg.remove_prefix(7);
                 s_singularity_script = arg;
               }
-            else if (arg.starts_with("args=\""))
+            else if (starts_with(arg, "args=\""))
               {
                 in_args = true;
                 arg.remove_prefix(6);
