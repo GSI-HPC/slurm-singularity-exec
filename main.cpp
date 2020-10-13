@@ -19,6 +19,7 @@
 
 #include <cstring>
 #include <exception>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <unistd.h>
@@ -152,6 +153,19 @@ public:
     return job_env;
   }
 
+  /// Get environment variable
+  std::optional<std::string>
+  getenv(const char* var)
+  {
+    constexpr int size = 1024;
+    char buf[size];
+    auto err = spank_getenv(handle, var, buf, size);
+    if (err == ESPANK_ENV_NOEXIST)
+      return std::nullopt;
+    throw_on_error(err);
+    return buf;
+  }
+
   /// Set environment variable
   void
   setenv(const char* var, const char* val)
@@ -196,6 +210,7 @@ struct singularity_exec
   inline static std::string s_container_name = {};
   inline static std::string s_singularity_script = "/usr/lib/slurm/slurm-singularity-wrapper.sh";
   inline static std::string s_singularity_args = {};
+  inline static bool s_default_container = true;
 
   template <typename F0, typename F1>
   static int
@@ -224,7 +239,10 @@ struct singularity_exec
                       "first set to '%s', then to '%s'.",
                       s_container_name.c_str(), optarg);
         },
-        [&] { s_container_name = optarg; });
+        [&] {
+          s_container_name = optarg;
+          s_default_container = false;
+        });
   }
 
   /// Set singularity arguments from --singularity-args
@@ -298,7 +316,9 @@ struct singularity_exec
         s.register_option(
             "singularity-container", "<name>",
             ("name of the requested container / user space (default: '"
-             + s_container_name + "')")
+             + s_container_name
+             + "'); the environment variable SINGULARITY_CONTAINER overwrites "
+               "the default")
                 .c_str(),
             0, set_container_name);
         s.register_option(
@@ -327,6 +347,12 @@ struct singularity_exec
   {
     try
       {
+        if (s_default_container)
+          { // check SINGULARITY_CONTAINER env var
+            auto env = s.getenv("SINGULARITY_CONTAINER");
+            if (env)
+              s_container_name = std::move(env).value();
+          }
         if (s_container_name.empty() || s_singularity_script.empty())
           {
             slurm_verbose("singularity-exec: no container selected. Skipping "
