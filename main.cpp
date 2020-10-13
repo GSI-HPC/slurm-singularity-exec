@@ -309,7 +309,12 @@ struct singularity_exec
             else
               slurm_error(
                   "singularity-exec plugin: argument in plugstack.conf is "
-                  "invalid: '%s'",
+                  "invalid: '%s'. Supported arguments:\n"
+                  "default=<container name>      may be empty\n"
+                  "script=<path to executable>   defaults to "
+                  "/usr/lib/slurm/slurm-singularity-wrapper.sh\n"
+                  "args=\"<singulary args>\"       quotes are mandatory; "
+                  "string may be empty\n",
                   arg.data());
           }
 
