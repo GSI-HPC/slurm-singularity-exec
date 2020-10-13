@@ -302,8 +302,11 @@ struct singularity_exec
               }
             else if (starts_with(arg, "args=\""))
               {
-                in_args = true;
                 arg.remove_prefix(6);
+                if (arg.back() == '"')
+                  arg.remove_suffix(1);
+                else
+                  in_args = true;
                 s_singularity_args = arg;
               }
             else
