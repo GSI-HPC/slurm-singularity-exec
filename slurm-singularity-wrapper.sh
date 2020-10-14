@@ -14,6 +14,9 @@ run_in() {
       container=/cvmfs/vae.gsi.de/$container/containers/user_container-production.sif
       ;;
   esac
+  if [ -n "$args" ]; then
+    echo "Warning: The wrapper script '$0' ignores singularity arguments ($args)" 1>&2
+  fi
   if [ -z "$bind" ]; then
     exec singularity exec "$container" -- "$@"
   else
