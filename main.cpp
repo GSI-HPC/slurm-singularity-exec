@@ -210,6 +210,9 @@ struct singularity_exec
   inline static std::string s_container_name = {};
   inline static std::string s_singularity_script = "/usr/lib/slurm/slurm-singularity-wrapper.sh";
   inline static std::string s_singularity_args = {};
+  inline static std::string s_bind_defaults = {};
+  inline static std::string s_bind_mounts = {};
+  inline static bool s_no_args_option = false;
   inline static bool s_default_container = true;
 
   template <typename F0, typename F1>
@@ -225,8 +228,13 @@ struct singularity_exec
         return -1;
       }
     already_called = true;
-    on_success();
-    return 0;
+    if constexpr (std::is_same_v<decltype(on_success()), void>)
+      {
+        on_success();
+        return 0;
+      }
+    else
+      return on_success();
   }
 
   /// Set container name from --singularity-container
@@ -245,6 +253,38 @@ struct singularity_exec
         });
   }
 
+  /// Add bind mount arguments from --singularity-bind
+  static int
+  add_bind_mounts(int, const char* optarg, int)
+  {
+    return only_once(
+        [&] {
+          slurm_error("--singularity-bind may not be set twice. It was first "
+                      "set to '%s', then to '%s'.",
+                      s_bind_mounts.c_str(), optarg);
+        },
+        [&] {
+          s_bind_mounts = optarg;
+#if 0
+          if (s_bind_mounts.find(' ') != std::string::npos)
+            {
+              slurm_error("The argument to --singularity-bind may not contain "
+                          "spaces.");
+              return -1;
+            }
+          return 0;
+#endif
+        });
+  }
+
+  /// Disable default bind mounts
+  static int
+  disable_bind_defaults(int, const char*, int)
+  {
+    s_bind_defaults = {};
+    return 0;
+  }
+
   /// Set singularity arguments from --singularity-args
   static int
   set_singularity_args(int, const char* optarg, int)
@@ -256,19 +296,6 @@ struct singularity_exec
                       s_singularity_args.c_str(), optarg);
         },
         [&] { s_singularity_args = optarg; });
-  }
-
-  /// Add singularity arguments from --singularity-add-args
-  static int
-  add_singularity_args(int, const char* optarg, int)
-  {
-    return only_once(
-        [&] {
-          slurm_error("--singularity-add-args may not be set twice. It was "
-                      "first set to '%s', then to '%s'.",
-                      s_singularity_args.c_str(), optarg);
-        },
-        [&] { (s_singularity_args += ' ') += optarg; });
   }
 
   /// Initialize the plugin: read plugstack.conf config & register options
@@ -291,15 +318,13 @@ struct singularity_exec
                 (s_singularity_args += ' ') += arg;
               }
             else if (starts_with(arg, "default="))
-              {
-                arg.remove_prefix(8);
-                s_container_name = arg;
-              }
+              s_container_name = arg.substr(8);
             else if (starts_with(arg, "script="))
-              {
-                arg.remove_prefix(7);
-                s_singularity_script = arg;
-              }
+              s_singularity_script = arg.substr(7);
+            else if (starts_with(arg, "bind="))
+              s_bind_defaults = arg.substr(5);
+            else if (arg == "args=disabled")
+              s_no_args_option = true;
             else if (starts_with(arg, "args=\""))
               {
                 arg.remove_prefix(6);
@@ -316,6 +341,9 @@ struct singularity_exec
                   "default=<container name>      may be empty\n"
                   "script=<path to executable>   defaults to "
                   "/usr/lib/slurm/slurm-singularity-wrapper.sh\n"
+                  "bind=src[:dest[:opts]][,src[:dest[:opts]]]*\n"
+                  "                              set default bind mounts\n"
+                  "args=disabled                 Disable custom arguments\n"
                   "args=\"<singulary args>\"       quotes are mandatory; "
                   "string may be empty\n",
                   arg.data());
@@ -329,16 +357,32 @@ struct singularity_exec
                "the default")
                 .c_str(),
             0, set_container_name);
+
         s.register_option(
-            "singularity-args", "<args>",
-            ("arguments to pass to singularity when containerizing "
-             "the job (default: '"
-             + s_singularity_args + "')")
+            "singularity-bind", "spec",
+            "a user-bind path specification.  spec has the format "
+            "src[:dest[:opts]], where src and dest are outside and inside "
+            "paths.  If dest is not given, it is set equal to src. Mount "
+            "options ('opts') may be specified as 'ro' (read-only) or 'rw' "
+            "(read/write, which is the default). Multiple bind paths can be "
+            "given by a comma separated list. The environment variable "
+            "SINGULARITY_BIND can be used instead of this option.",
+            0, add_bind_mounts);
+
+        s.register_switch(
+            "singularity-no-bind-defaults",
+            ("disable bind mount defaults (default: " + s_bind_defaults + ")")
                 .c_str(),
-            0, set_singularity_args);
-        s.register_option("singularity-add-args", "<args>",
-                          "append <args> to the singularity arguments", 10,
-                          add_singularity_args);
+            0, disable_bind_defaults);
+
+        if(!s_no_args_option)
+          s.register_option(
+              "singularity-args", "<args>",
+              ("arguments to pass to singularity when containerizing "
+               "the job (default: '"
+               + s_singularity_args + "')")
+                  .c_str(),
+              0, set_singularity_args);
 
         return 0;
       }
@@ -368,6 +412,23 @@ struct singularity_exec
             return 0;
           }
 
+        if (s_bind_mounts.empty())
+          {
+            auto env = s.getenv("SINGULARITY_BIND");
+            if (env)
+              s_bind_mounts = std::move(env).value();
+          }
+        if (!s_bind_defaults.empty())
+          {
+            if (s_bind_mounts.empty())
+              s_bind_mounts = std::move(s_bind_defaults);
+            else
+              s_bind_mounts = s_bind_defaults + ',' + s_bind_mounts;
+          }
+
+        // unconditionally set these two variables so they don't become an
+        // accidental user interface
+        s.setenv("SLURM_SINGULARITY_BIND", s_bind_mounts.c_str());
         s.setenv("SLURM_SINGULARITY_ARGS", s_singularity_args.c_str());
         std::vector<char*> argv = s.job_argument_vector();
         argv.insert(argv.begin(),
