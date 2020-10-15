@@ -351,10 +351,8 @@ struct singularity_exec
 
         s.register_option(
             "singularity-container", "<name>",
-            ("name of the requested container / user space (default: '"
-             + s_container_name
-             + "'); the environment variable SINGULARITY_CONTAINER overwrites "
-               "the default")
+            ("name of the requested container / user space (default: '" + s_container_name
+             + "'); the environment variable SLURM_SINGULARITY_CONTAINER overwrites the default")
                 .c_str(),
             0, set_container_name);
 
@@ -366,7 +364,7 @@ struct singularity_exec
             "options ('opts') may be specified as 'ro' (read-only) or 'rw' "
             "(read/write, which is the default). Multiple bind paths can be "
             "given by a comma separated list. The environment variable "
-            "SINGULARITY_BIND can be used instead of this option.",
+            "SLURM_SINGULARITY_BIND can be used instead of this option.",
             0, add_bind_mounts);
 
         s.register_switch(
@@ -400,8 +398,8 @@ struct singularity_exec
     try
       {
         if (s_default_container)
-          { // check SINGULARITY_CONTAINER env var
-            auto env = s.getenv("SINGULARITY_CONTAINER");
+          { // check SLURM_SINGULARITY_CONTAINER env var
+            auto env = s.getenv("SLURM_SINGULARITY_CONTAINER");
             if (env)
               s_container_name = std::move(env).value();
           }
@@ -414,7 +412,7 @@ struct singularity_exec
 
         if (s_bind_mounts.empty())
           {
-            auto env = s.getenv("SINGULARITY_BIND");
+            auto env = s.getenv("SLURM_SINGULARITY_BIND");
             if (env)
               s_bind_mounts = std::move(env).value();
           }
