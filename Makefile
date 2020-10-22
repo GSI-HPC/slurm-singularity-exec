@@ -1,15 +1,29 @@
+libdir=/usr/lib/slurm
+etcdir=/etc/slurm
+scphost=slurm-test
+
+all: singularity-exec.so
+
+test:
+	echo $(libdir) $(etcdir)
+
 singularity-exec.so: main.cpp Makefile
 	$(CXX) -std=c++17 -O2 -Wall -Wextra -fpic -shared -static-libstdc++ -static-libgcc -o $@ $<
 
-install: singularity-exec.so singularity-exec.conf
-	install slurm-singularity-wrapper.sh /usr/lib/slurm/
-	install singularity-exec.so          /usr/lib/slurm/
-	install singularity-exec.conf        /etc/slurm/plugstack.conf.d/
+prepare-plugstack-conf:
+	mkdir -p $(etcdir)/plugstack.conf.d
+	grep -q '^\s*include\s\+$(etcdir)/plugstack.conf.d/*.conf' || \
+	  echo 'include $(etcdir)/plugstack.conf.d/*.conf' >> $(etcdir)/plugstack.conf
+
+install: singularity-exec.so singularity-exec.conf prepare-plugstack-conf
+	install slurm-singularity-wrapper.sh $(libdir)/
+	install singularity-exec.so          $(libdir)/
+	install singularity-exec.conf        $(etcdir)/plugstack.conf.d/
 
 install-scp: singularity-exec.so singularity-exec.conf
-	scp slurm-singularity-wrapper.sh slurm-test:/usr/lib/slurm/
-	scp singularity-exec.so          slurm-test:/usr/lib/slurm/
-	scp singularity-exec.conf        slurm-test:/etc/slurm/plugstack.conf.d/
+	scp slurm-singularity-wrapper.sh $(scphost):$(libdir)/
+	scp singularity-exec.so          $(scphost):$(libdir)/
+	scp singularity-exec.conf        $(scphost):$(etcdir)/plugstack.conf.d/
 
 help:
 	@echo "... all"
@@ -19,4 +33,4 @@ help:
 clean:
 	rm -f singularity-exec.so
 
-.PHONY: help clean
+.PHONY: help clean prepare-plugstack-conf
