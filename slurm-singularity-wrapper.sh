@@ -18,9 +18,9 @@ run_in() {
     echo "Warning: The wrapper script '$0' ignores singularity arguments ($args)" 1>&2
   fi
   if [ -z "$bind" ]; then
-    exec singularity exec "$container" -- "$@"
+    exec singularity exec "$container" "$@"
   else
-    exec singularity exec --bind "$bind" "$container" -- "$@"
+    exec singularity exec --bind "$bind" "$container" "$@"
   fi
 }
 
