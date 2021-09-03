@@ -1,27 +1,39 @@
 #!/bin/sh
+
+VERSION=1.0
+
+_debug() {
+        if [ "$SLURM_SINGULARITY_DEBUG" = "true" ]; then
+                echo 1>&2 "Debug: $@"
+        fi
+}
+
+_error() {
+        echo 1>&2 "Error: $@"
+	exit 1
+}
+
 run_in() {
-  local container="$1"
-  shift
-  local args="$SLURM_SINGULARITY_ARGS"
-  unset SLURM_SINGULARITY_ARGS
-  local bind="$SLURM_SINGULARITY_BIND"
-  unset SLURM_SINGULARITY_BIND
-  case "$container" in
-    */*)
-      # It's a path, so no standard vae.gsi.de container
-      ;;
-    *)
-      container=/cvmfs/vae.gsi.de/$container/containers/user_container-production.sif
-      ;;
-  esac
-  if [ -n "$args" ]; then
-    echo "Warning: The wrapper script '$0' ignores singularity arguments ($args)" 1>&2
-  fi
-  if [ -z "$bind" ]; then
-    exec singularity exec "$container" "$@"
-  else
-    exec singularity exec --bind "$bind" "$container" "$@"
-  fi
+
+	local container="$1"
+	shift
+        test -f $container || _error "$container missing"
+        _debug "SLURM_SINGULARITY_CONTAINER=$container"
+
+	local args="$SLURM_SINGULARITY_ARGS"
+        _debug "SLURM_SINGULARITY_ARGS=$args"
+
+	local bind="$SLURM_SINGULARITY_BIND"
+        _debug "SLURM_SINGULARITY_BIND=$bind"
+
+	local global="$SLURM_SINGULARITY_GLOBAL"
+        _debug "SLURM_SINGULARITY_GLOBAL=$global"
+
+        local command="singularity $global exec --bind=$bind $args $container $@"
+        _debug "$command"
+
+        echo "Start Singularity container $container"
+        exec $command
 }
 
 run_in "$@"
