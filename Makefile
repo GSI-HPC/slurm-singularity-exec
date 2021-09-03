@@ -1,6 +1,5 @@
-libdir=/usr/lib/slurm
+libdir=/etc/slurm/spank
 etcdir=/etc/slurm
-scphost=slurm-test
 
 all: singularity-exec.so
 
@@ -12,23 +11,17 @@ singularity-exec.so: main.cpp Makefile
 
 prepare-plugstack-conf:
 	mkdir -p $(etcdir)/plugstack.conf.d
-	grep -q '^\s*include\s\+$(etcdir)/plugstack.conf.d/*.conf' || \
-	  echo 'include $(etcdir)/plugstack.conf.d/*.conf' >> $(etcdir)/plugstack.conf
+	test -f $(etcdir)/plugstack.conf || \
+	  echo 'include $(etcdir)/plugstack.conf.d/*.conf' > $(etcdir)/plugstack.conf
 
-install: singularity-exec.so singularity-exec.conf prepare-plugstack-conf
+install: singularity-exec.so prepare-plugstack-conf singularity-exec.conf
 	install slurm-singularity-wrapper.sh $(libdir)/
 	install singularity-exec.so          $(libdir)/
 	install singularity-exec.conf        $(etcdir)/plugstack.conf.d/
 
-install-scp: singularity-exec.so singularity-exec.conf
-	scp slurm-singularity-wrapper.sh $(scphost):$(libdir)/
-	scp singularity-exec.so          $(scphost):$(libdir)/
-	scp singularity-exec.conf        $(scphost):$(etcdir)/plugstack.conf.d/
-
 help:
 	@echo "... all"
 	@echo "... install"
-	@echo "... install-scp"
 
 clean:
 	rm -f singularity-exec.so
