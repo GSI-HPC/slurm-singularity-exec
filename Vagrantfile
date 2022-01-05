@@ -52,7 +52,6 @@ Vagrant.configure("2") do |config|
 
   config.vm.box_check_update = false
   config.vm.synced_folder ".", "/vagrant", type: "rsync"
-  config.vm.network "private_network", ip: "192.168.50.10"
 
   ##
   # CentOS 7 with GCC 8
@@ -98,6 +97,42 @@ Vagrant.configure("2") do |config|
     config.vm.provision "shell" do |s|
       s.privileged = true,
       s.inline = %q(
+        dnf install -y epel-release
+        dnf config-manager --set-enabled powertools
+        dnf install -y munge slurm-slurmctld slurm-slurmd singularity make gcc gcc-c++ libstdc++-static
+        echo 123456789123456781234567812345678 > /etc/munge/munge.key
+        chown munge:munge /etc/munge/munge.key
+        chmod 600 /etc/munge/munge.key
+      )
+    end
+    
+    # Configure Slurm and the Singularity SPANK plugin
+    #
+    config.vm.provision "shell" do |s|
+      s.privileged = true,
+      s.inline = %Q(
+        mkdir /etc/slurm/spank
+        cd /vagrant
+        make libdir=/etc/slurm/spank install
+        echo "#{singularity_conf}" > /etc/slurm/plugstack.conf.d/singularity-exec.conf
+        systemctl enable --now munge slurmctld slurmd
+      )
+    end
+
+  end
+
+  ##
+  # Enterprise Linux 8
+  #
+  config.vm.define "el8" do |config|
+
+    config.vm.hostname = "el8"
+    config.vm.box = "almalinux/8"
+
+    config.vm.provision "shell" do |s|
+      s.privileged = true,
+      s.inline = %q(
+#        dnf upgrade -y
         dnf install -y epel-release
         dnf config-manager --set-enabled powertools
         dnf install -y munge slurm-slurmctld slurm-slurmd singularity make gcc gcc-c++ libstdc++-static
