@@ -107,18 +107,17 @@ Vagrant.configure("2") do |config|
       )
     end
     
-    # Configure Slurm and the Singularity SPANK plugin
+    # Build the Singularity SPANK plugin
     #
-#    config.vm.provision "shell" do |s|
-#      s.privileged = true,
-#      s.inline = %Q(
-#        mkdir /etc/slurm/spank
+    config.vm.provision "shell" do |s|
+      s.privileged = true,
+      s.inline = %Q(
+        sudo dnf install -y slurm-devel 
 #        cd /vagrant
-#        make libdir=/etc/slurm/spank install
-#        echo "#{singularity_conf}" > /etc/slurm/plugstack.conf.d/singularity-exec.conf
+#        sudo make install
 #        systemctl enable --now munge slurmctld slurmd
 #      )
-#    end
+    end
 
   end
 

@@ -1,6 +1,7 @@
 libdir=/usr/lib$(shell uname -m | grep -q x86_64 && echo 64)/slurm
 libexec=/usr/libexec
 etcdir=/etc/slurm
+incdir=/usr/include/slurm
 
 all: singularity-exec.so
 
@@ -8,7 +9,7 @@ test:
 	echo $(libdir) $(libexec) $(etcdir)
 
 singularity-exec.so: main.cpp Makefile
-	$(CXX) -std=c++17 -O2 -Wall -Wextra -fpic -shared -static-libstdc++ -static-libgcc -o $@ $<
+	$(CXX) -std=c++17 -O2 -Wall -Wextra -fpic -shared -static-libstdc++ -static-libgcc -I$(incdir) -o $@ $<
 
 prepare-plugstack-conf:
 	mkdir -p $(etcdir)/plugstack.conf.d

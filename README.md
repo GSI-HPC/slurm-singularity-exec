@@ -20,14 +20,14 @@ options are then propagated to a shell script
 
 File                 | Description
 ---------------------|---------------------------------------------
-[main.cpp](main.cpp) | Singularity SPANK plug-in
-[spank.h](spank.h)   | SPANK plug-ins are compiled against this header file [02]
+[main.cpp](main.cpp) | Singularity SPANK plug-in source code
 
 > All SPANK plug-ins should be recompiled when upgrading Slurm to a new major
 > release. [01]
 
 Build this plug-in using `g++` from the GNU Compiler Collection (GCC) version 8
-or newer:
+or newer. The plug-ins are compiled against this header file `spank.h` [02].
+Fedora distributes this file in the `slurm-devel` RPM package [05]. 
 
 ```sh
 # build the Singularity SPANK plug-in
@@ -57,15 +57,13 @@ include /etc/slurm/plugstack.conf.d/*.conf'
 EOF
 # reference the path to the plug-in and the wrapper script 
 cat > /etc/slurm/plugstack.conf.d/singularity-exec.conf <<EOF
-required /etc/slurm/spank/singularity-exec.so default= script=/etc/slurm/spank/slurm-singularity-wrapper.sh bind= args=disabled
+required /usr/lib64/slurm/singularity-exec.so default= script=/usr/libexec/slurm-singularity-wrapper.sh bind= args=disabled
 EOF
 ```
 
 Note that the configuration illustrated above will be deployed by `make
-install`.
-
-Modification to the plug-in configuration described below does not required a
-restart of `slurmd`:
+install`. Modification to the plug-in configuration described below does not
+required a restart of `slurmd`:
 
 Option                 | Description
 -----------------------|------------------------------------------------
@@ -158,6 +156,9 @@ vagrant up el7gcc8
 
 [04] singularity Documentation  
 <https://singularity.hpcng.org/docs>
+
+[05] Fedora Slurm RPM Package  
+<https://src.fedoraproject.org/rpms/slurm>
 
 [99]: singularity-exec.conf
 [98]: slurm-singularity-wrapper.sh
