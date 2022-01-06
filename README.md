@@ -31,11 +31,9 @@ or newer:
 
 ```sh
 # build the Singularity SPANK plug-in
-make singularity-exec.so
+make
 # build the plug-in, and install the binary and configuration files
-make install
-# install the plug-in and script to a defined directory
-make libdir=/usr/lib/slurm install
+sudo make install
 ```
 
 By default the plug-in `singularity-exec.so` is installed to `/etc/slurm/spank`.

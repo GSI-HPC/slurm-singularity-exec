@@ -1,10 +1,11 @@
-libdir=/etc/slurm/spank
+libdir=/usr/lib$(shell uname -m | grep -q x86_64 && echo 64)/slurm
+libexec=/usr/libexec
 etcdir=/etc/slurm
 
 all: singularity-exec.so
 
 test:
-	echo $(libdir) $(etcdir)
+	echo $(libdir) $(libexec) $(etcdir)
 
 singularity-exec.so: main.cpp Makefile
 	$(CXX) -std=c++17 -O2 -Wall -Wextra -fpic -shared -static-libstdc++ -static-libgcc -o $@ $<
@@ -14,10 +15,12 @@ prepare-plugstack-conf:
 	test -f $(etcdir)/plugstack.conf || \
 	  echo 'include $(etcdir)/plugstack.conf.d/*.conf' > $(etcdir)/plugstack.conf
 
-install: singularity-exec.so prepare-plugstack-conf singularity-exec.conf
-	install slurm-singularity-wrapper.sh $(libdir)/
+singularity-exec-conf: prepare-plugstack-conf
+	echo 'required $(libdir)/singularity-exec.so default= script=$(libexec)/slurm-singularity-wrapper.sh bind=/etc/slurm,/var/run/munge,/var/spool/slurm args=""' > $(etcdir)/plugstack.conf.d/singularity-exec.conf
+
+install: singularity-exec.so prepare-plugstack-conf singularity-exec-conf
 	install singularity-exec.so          $(libdir)/
-	install singularity-exec.conf        $(etcdir)/plugstack.conf.d/
+	install slurm-singularity-wrapper.sh $(libexec)/
 
 help:
 	@echo "... all"
@@ -26,4 +29,4 @@ help:
 clean:
 	rm -f singularity-exec.so
 
-.PHONY: help clean prepare-plugstack-conf
+.PHONY: help clean prepare-plugstack-conf singularity-exec-conf

@@ -87,41 +87,6 @@ Vagrant.configure("2") do |config|
   end
 
   ##
-  # CentOS Stream 8
-  #
-  config.vm.define "els8" do |config|
-
-    config.vm.hostname = "els8"
-    config.vm.box = "centos/stream8"
-
-    config.vm.provision "shell" do |s|
-      s.privileged = true,
-      s.inline = %q(
-        dnf install -y epel-release
-        dnf config-manager --set-enabled powertools
-        dnf install -y munge slurm-slurmctld slurm-slurmd singularity make gcc gcc-c++ libstdc++-static
-        echo 123456789123456781234567812345678 > /etc/munge/munge.key
-        chown munge:munge /etc/munge/munge.key
-        chmod 600 /etc/munge/munge.key
-      )
-    end
-    
-    # Configure Slurm and the Singularity SPANK plugin
-    #
-    config.vm.provision "shell" do |s|
-      s.privileged = true,
-      s.inline = %Q(
-        mkdir /etc/slurm/spank
-        cd /vagrant
-        make libdir=/etc/slurm/spank install
-        echo "#{singularity_conf}" > /etc/slurm/plugstack.conf.d/singularity-exec.conf
-        systemctl enable --now munge slurmctld slurmd
-      )
-    end
-
-  end
-
-  ##
   # Enterprise Linux 8
   #
   config.vm.define "el8" do |config|
@@ -144,16 +109,16 @@ Vagrant.configure("2") do |config|
     
     # Configure Slurm and the Singularity SPANK plugin
     #
-    config.vm.provision "shell" do |s|
-      s.privileged = true,
-      s.inline = %Q(
-        mkdir /etc/slurm/spank
-        cd /vagrant
-        make libdir=/etc/slurm/spank install
-        echo "#{singularity_conf}" > /etc/slurm/plugstack.conf.d/singularity-exec.conf
-        systemctl enable --now munge slurmctld slurmd
-      )
-    end
+#    config.vm.provision "shell" do |s|
+#      s.privileged = true,
+#      s.inline = %Q(
+#        mkdir /etc/slurm/spank
+#        cd /vagrant
+#        make libdir=/etc/slurm/spank install
+#        echo "#{singularity_conf}" > /etc/slurm/plugstack.conf.d/singularity-exec.conf
+#        systemctl enable --now munge slurmctld slurmd
+#      )
+#    end
 
   end
 
