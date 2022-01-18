@@ -137,16 +137,31 @@ Start a test environment using the included [`Vagrantfile`][96]:
 * Copies the Singularity containers to `/tmp`
 * Builds, installs and configures the Slurm Singularity plug-in
 
+Start a Vagrant box to build an RPM package:
+
 ```bash
-# CentOS 7 with GNU Compiler Collection version 8
-vagrant up el7gcc8
+vagrant up el8 && vagrant ssh el8 # for example...
+# synced from the host
+cd /vagrant
+# build and install the plugin...
+make install
+# ...alternativly use the RPM package described in the next section
+sudo systemctl enable --now munge slurmctld slurmd
 ```
 
 ## Package
 
+Start a Vagrant box to build an RPM package:
+
+```bash
+vagrant up el8 && vagrant ssh el8 # for example...
+```
+
 Build an RPM package using `slurm-singularity-exec.spec`:
 
 ```bash
+# synced from the host
+cd /vagrant
 rpmdev-setuptree
 # prepare the source code archive from this repository
 tar --create \
@@ -159,8 +174,20 @@ tar --create \
 rpmbuild -bb slurm-singularity-exec.spec
 # list files in the package
 rpm -ql ~/rpmbuild/RPMS/$(uname -p)/slurm-singularity*
+# list the post-install script
+rpm -qp --scripts ~/rpmbuild/RPMS/$(uname -p)/slurm-singularity
+# install the package
+sudo rpm --force -i ~/rpmbuild/RPMS/$(uname -p)/slurm-singularity-exec-*.rpm
 ```
 
+```bash
+# copy the binary package into the working-directory
+cp -v $(find ~/rpmbuild/* -name *.rpm) /vagrant
+# install the plugin if required
+vagrant plugin install vagrant-rsync-back
+# download the backage from the Vagrant box
+vagrant rsync-back el8
+```
 
 ## References
 

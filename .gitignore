@@ -1,2 +1,3 @@
 singularity-exec.so
+*.rpm
 .vagrant/
