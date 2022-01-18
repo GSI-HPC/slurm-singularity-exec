@@ -148,13 +148,17 @@ Build an RPM package using `slurm-singularity-exec.spec`:
 
 ```bash
 rpmdev-setuptree
+# prepare the source code archive from this repository
 tar --create \
     --verbose \
     --gzip \
     --exclude=.git \
     --transform 's,^,slurm-singularity-exec-1.0/,' \
     --file ~/rpmbuild/SOURCES/slurm-singularity-exec-1.0.tar.gz .
+# build the binary package
 rpmbuild -bb slurm-singularity-exec.spec
+# list files in the package
+rpm -ql ~/rpmbuild/RPMS/$(uname -p)/slurm-singularity*
 ```
 
 
