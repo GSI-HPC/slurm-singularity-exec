@@ -142,6 +142,21 @@ Start a test environment using the included [`Vagrantfile`][96]:
 vagrant up el7gcc8
 ```
 
+## Package
+
+Build an RPM package using `slurm-singularity-exec.spec`:
+
+```bash
+rpmdev-setuptree
+tar --create \
+    --verbose \
+    --gzip \
+    --exclude=.git \
+    --transform 's,^,slurm-singularity-exec-1.0/,' \
+    --file ~/rpmbuild/SOURCES/slurm-singularity-exec-1.0.tar.gz .
+rpmbuild -bb slurm-singularity-exec.spec
+```
+
 
 ## References
 

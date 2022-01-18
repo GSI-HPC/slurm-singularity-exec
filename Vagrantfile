@@ -38,17 +38,6 @@ Vagrant.configure("2") do |config|
   bind = '/etc/slurm,/var/run/munge,/var/spool/slurm'
 
   singularity_conf = %Q(required #{plugin} default= script=#{wrapper} bind=#{bind} args="")
-  
-  # Copy test container into the box
-  #
-  %w(
-    /tmp/debian10.sif
-    /tmp/centos7.sif
-    /tmp/centos_stream8.sif
-   ).each do |file|
-     name = File.basename file
-     config.vm.provision "file", source: "#{file}", destination: "/tmp/#{name}"
-  end
 
   config.vm.box_check_update = false
   config.vm.synced_folder ".", "/vagrant", type: "rsync"
@@ -60,6 +49,17 @@ Vagrant.configure("2") do |config|
 
     config.vm.hostname = "el7gcc8"
     config.vm.box = "centos/7"
+
+    # Copy test container into the box
+    #
+    %w(
+      /tmp/debian10.sif
+      /tmp/centos7.sif
+      /tmp/centos_stream8.sif
+     ).each do |file|
+       name = File.basename file
+       config.vm.provision "file", source: "#{file}", destination: "/tmp/#{name}"
+    end
 
     config.vm.provision "shell" do |s|
       s.privileged = true,
@@ -94,10 +94,20 @@ Vagrant.configure("2") do |config|
     config.vm.hostname = "el8"
     config.vm.box = "almalinux/8"
 
+    # Copy test container into the box
+    #
+    %w(
+      /tmp/debian10.sif
+      /tmp/centos7.sif
+      /tmp/centos_stream8.sif
+     ).each do |file|
+       name = File.basename file
+       config.vm.provision "file", source: "#{file}", destination: "/tmp/#{name}"
+    end
+
     config.vm.provision "shell" do |s|
       s.privileged = true,
       s.inline = %q(
-#        dnf upgrade -y
         dnf install -y epel-release
         dnf config-manager --set-enabled powertools
         dnf install -y munge slurm-slurmctld slurm-slurmd singularity make gcc gcc-c++ libstdc++-static
@@ -113,12 +123,31 @@ Vagrant.configure("2") do |config|
       s.privileged = true,
       s.inline = %Q(
         sudo dnf install -y slurm-devel 
-#        cd /vagrant
-#        sudo make install
-#        systemctl enable --now munge slurmctld slurmd
-#      )
+        cd /vagrant
+        sudo make install
+        systemctl enable --now munge slurmctld slurmd
+      )
     end
 
   end
+  
+  config.vm.define "el8-package" do |config|
 
+    config.vm.hostname = "el8"
+    config.vm.box = "almalinux/8"
+
+    # Build an RPM package
+    #
+    config.vm.provision "shell" do |s|
+      s.privileged = true,
+      s.inline = %q(
+        dnf install -y epel-release
+        dnf config-manager --set-enabled powertools
+        dnf install -y vim rpm-build rpmdevtools slurm-devel make gcc gcc-c++ libstdc++-static
+        cd /vagrant
+      )
+    end
+
+  end
+  
 end
