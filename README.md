@@ -174,15 +174,13 @@ tar --create \
 rpmbuild -bb slurm-singularity-exec.spec
 # list files in the package
 rpm -ql ~/rpmbuild/RPMS/$(uname -p)/slurm-singularity*
-# list the post-install script
-rpm -qp --scripts ~/rpmbuild/RPMS/$(uname -p)/slurm-singularity
 # install the package
 sudo rpm --force -i ~/rpmbuild/RPMS/$(uname -p)/slurm-singularity-exec-*.rpm
 ```
 
 ```bash
 # copy the binary package into the working-directory
-cp -v $(find ~/rpmbuild/* -name *.rpm) /vagrant
+cp -v ~/rpmbuild/RPMS/$(uname -p)/slurm-singularity-exec-*.rpm /vagrant
 # install the plugin if required
 vagrant plugin install vagrant-rsync-back
 # download the backage from the Vagrant box

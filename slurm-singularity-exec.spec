@@ -34,18 +34,16 @@ cp %{_builddir}/%{name}-%{version}/singularity-exec.so \
 mkdir -p %{buildroot}/%{_libexecdir} 
 cp %{_builddir}/%{name}-%{version}/slurm-singularity-wrapper.sh \
    %{buildroot}/%{_libexecdir}/slurm-singularity-wrapper.sh
-mkdir -p %{buildroot}/%{_sysconfdir}/slurm/plugstack.conf.d
+mkdir -p %{buildroot}/%{_docdir}/slurm-singularity-exec
 cp %{_builddir}/%{name}-%{version}/singularity-exec.conf \
-   %{buildroot}/%{_sysconfdir}/slurm/plugstack.conf.d/singularity-exec.conf
+   %{buildroot}/%{_docdir}/slurm-singularity-exec/singularity-exec.conf
 
 %files
 %{_libdir}/slurm/singularity-exec.so
 %{_libexecdir}/slurm-singularity-wrapper.sh
-%{_sysconfdir}/slurm/plugstack.conf.d/singularity-exec.conf
-
-%post
-test -f %{_sysconfdir}/slurm/plugstack.conf \
-        || echo 'include %{_sysconfdir}/slurm/plugstack.conf.d/*.conf' >> %{_sysconfdir}/slurm/plugstack.conf
+%{_docdir}/slurm-singularity-exec/singularity-exec.conf
+%license LICENSE
+%doc README.md
 
 %changelog
 * Mon Jan 17 2022 Victor Penso <v.penso@gsi.de> 1.0
