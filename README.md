@@ -140,7 +140,7 @@ Start a test environment using the included [`Vagrantfile`][96]:
 Start a Vagrant box to build an RPM package:
 
 ```bash
-vagrant up el8 && vagrant ssh el8 # for example...
+./containers.sh && vagrant up el8 && vagrant ssh el8 # for example...
 # synced from the host
 cd /vagrant
 # build and install the plugin...
@@ -154,7 +154,7 @@ sudo systemctl enable --now munge slurmctld slurmd
 Start a Vagrant box to build an RPM package:
 
 ```bash
-vagrant up el8 && vagrant ssh el8 # for example...
+./containers.sh && vagrant up el8 && vagrant ssh el8 # for example...
 ```
 
 Build an RPM package using `slurm-singularity-exec.spec`:
