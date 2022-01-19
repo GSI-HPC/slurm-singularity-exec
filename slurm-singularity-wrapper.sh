@@ -32,6 +32,10 @@ run_in() {
         local command="singularity $global exec --bind=$bind $args $container $@"
         _debug "$command"
 
+        # export the PATH and LD_LIBRARY_PATH environment variable to the container
+        export SINGULARITYENV_PATH=$PATH
+        export SINGULARITYENV_LD_LIBRARY_PATH=$LD_LIBRARY_PATH
+
         echo "Start Singularity container $container"
         exec $command
 }
