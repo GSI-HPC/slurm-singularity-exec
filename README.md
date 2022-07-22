@@ -170,6 +170,8 @@ tar --create \
     --exclude=.git \
     --transform 's,^,slurm-singularity-exec-1.0/,' \
     --file ~/rpmbuild/SOURCES/slurm-singularity-exec-1.0.tar.gz .
+# install build dependencies if required...
+dnf builddep -y slurm-singularity-exec.spec
 # build the binary package
 rpmbuild -bb slurm-singularity-exec.spec
 # list files in the package
