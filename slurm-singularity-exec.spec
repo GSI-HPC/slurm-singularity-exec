@@ -1,5 +1,5 @@
 Name:           slurm-singularity-exec
-Version:        1.0
+Version:        21.08
 Release:        0
 Summary:        Slurm SPANK plugin to start Singularity containers
 
@@ -46,5 +46,7 @@ cp %{_builddir}/%{name}-%{version}/singularity-exec.conf \
 %doc README.md
 
 %changelog
+* Fri Jul 22 2022 Victor Penso <v.penso@gsi.de> 21.08
+  - Build package against Slurm version 21.08
 * Mon Jan 17 2022 Victor Penso <v.penso@gsi.de> 1.0
   - First versions to be packaged
