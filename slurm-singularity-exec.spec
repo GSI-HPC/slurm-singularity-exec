@@ -1,13 +1,13 @@
 Name:           slurm-singularity-exec
 Version:        21.08
-Release:        0
+Release:        1
 Summary:        Slurm SPANK plugin to start Singularity containers
 
 License:        GPLv3
 Source0:        %{name}-%{version}.tar.gz
 
 BuildRequires:  slurm-devel make gcc gcc-c++ libstdc++-static
-Requires:       slurm-slurmd singularity
+Requires:       slurm-slurmd apptainer
 
 %description
 The Singularity SPANK plug-in provides the users with an interface to launch an
@@ -46,6 +46,8 @@ cp %{_builddir}/%{name}-%{version}/singularity-exec.conf \
 %doc README.md
 
 %changelog
+* Fri Feb 24 2023 Victor Penso <v.penso@gsi.de> 21.08-1
+  - Replace Singularity with Apptainer as run-time dependency
 * Fri Jul 22 2022 Victor Penso <v.penso@gsi.de> 21.08
   - Build package against Slurm version 21.08
 * Mon Jan 17 2022 Victor Penso <v.penso@gsi.de> 1.0
