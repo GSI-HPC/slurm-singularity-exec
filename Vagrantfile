@@ -71,7 +71,7 @@ Vagrant.configure("2") do |config|
       s.inline = %q(
         dnf install -y epel-release
         dnf config-manager --set-enabled powertools
-        dnf install -y munge slurm-slurmctld slurm-slurmd singularity \
+        dnf install -y munge slurm-slurmctld slurm-slurmd apptainer \
                        rpm-build rpmdevtools slurm-devel make gcc gcc-c++ libstdc++-static
         echo 123456789123456781234567812345678 > /etc/munge/munge.key
         chown munge:munge /etc/munge/munge.key
