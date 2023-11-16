@@ -54,39 +54,6 @@ Vagrant.configure("2") do |config|
   end
 
   ##
-  # CentOS 7 with GCC 8
-  #
-  config.vm.define "el7gcc8" do |config|
-
-    config.vm.hostname = "el7gcc8"
-    config.vm.box = "centos/7"
-
-    config.vm.provision "shell" do |s|
-      s.privileged = true,
-      s.inline = %q(
-        yum install -y epel-release centos-release-scl
-        rpm -i https://github.com/openhpc/ohpc/releases/download/v1.3.GA/ohpc-release-1.3-1.el7.x86_64.rpm
-        yum install -y slurm-slurmctld-ohpc slurm-slurmd-ohpc slurm-example-configs-ohpc \
-                       singularity git devtoolset-8
-      )
-    end
-
-    config.vm.provision "shell" do |s|
-      s.privileged = true,
-      s.inline = %Q(
-        source scl_source enable devtoolset-8
-        mkdir /etc/slurm/spank
-        cd /vagrant
-        make libdir=/etc/slurm/spank install
-        echo "#{singularity_conf}" > /etc/slurm/plugstack.conf.d/singularity-exec.conf
-        echo "#{slurm_conf}" > /etc/slurm/slurm.conf
-        systemctl enable --now munge slurmctld slurmd
-      )
-    end
-
-  end
-
-  ##
   # Enterprise Linux 8
   #
   config.vm.define "el8" do |config|
@@ -94,6 +61,10 @@ Vagrant.configure("2") do |config|
     config.vm.hostname = "el8"
     config.vm.box = "almalinux/8"
 
+    config.vm.provider :libvirt do |libvirt|
+      libvirt.memory = 2048
+      libvirt.cpus = 2
+    end
 
     config.vm.provision "shell" do |s|
       s.privileged = true,
