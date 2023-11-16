@@ -1,20 +1,21 @@
-# Slurm Singularity SPANK Plug-in
+# Slurm Singularity SPANK Plugin
 
-The Slurm SPANK plug-in mechanisms [01] dynamically modifies the runtime behavior
+The Singularity SPANK plugin provides the users with an interface to launch an
+application within a Linux container. The plug-in adds multiple command-line
+options to the `salloc`, `srun` and `sbatch` commands. These options are then
+propagated to a shell script [slurm-singularity-wrapper.sh][98] customizable by
+the cluster administrator. This plugin is compatible to both Apptainer [^wtl3M]
+and SinguarityCE [^oJ91o] (Sylabs Inc.) as container engine.
+
+The Slurm SPANK plug-in mechanisms [^bk1WA] dynamically modifies the runtime behavior
 of Slurm jobs:
 
 > SPANK provides a very generic interface for stackable plug-ins which may be
 > used to dynamically modify the job launch code in Slurm. SPANK plugins may be
 > built without access to Slurm source code. They need only be compiled against
-> Slurm's `spank.h` [02] header file, added to the SPANK config file
+> Slurm's `spank.h` [^AV7Wy] header file, added to the SPANK config file
 > `plugstack.conf`, and they will be loaded at runtime during the next job
 > launch.
-
-The Singularity SPANK plug-in provides the users with an interface to launch an
-application within a Singularity container [03]. The plug-in adds multiple
-command-line options to the `salloc`, `srun` and `sbatch` commands. These
-options are then propagated to a shell script
-[slurm-singularity-wrapper.sh][98] customizable by the cluster administrator.
 
 ## Build
 
@@ -23,11 +24,11 @@ File                 | Description
 [main.cpp](main.cpp) | Singularity SPANK plug-in source code
 
 > All SPANK plug-ins should be recompiled when upgrading Slurm to a new major
-> release. [01]
+> release. [^bk1WA]
 
 Build this plug-in using `g++` from the GNU Compiler Collection (GCC) version 8
 or newer. The plug-ins are compiled against this header file `spank.h` [02].
-Fedora distributes this file in the `slurm-devel` RPM package [05]. 
+Fedora distributes this file in the `slurm-devel` RPM package [^DoUiD]. 
 
 ```sh
 # build the Singularity SPANK plug-in
@@ -69,7 +70,7 @@ Option                 | Description
 -----------------------|------------------------------------------------
 `default=<path>`       | Path to the Singularity container launched by default. If this is set user require to explicitly use an empty `--singularity-container=` option to prevent the start of a container.
 `script=<path>`        | Path to the wrapper script which consumes the input arguments and environment variables set by the plugin to launch the Singularity container. 
-`bind=<spec>`          | List of paths to bind-mount into the container by default. Please reference the section about [User-defined bind paths][95] in the Singularity User Documentation [04].
+`bind=<spec>`          | List of paths to bind-mount into the container by default. Please reference the section about [User-defined bind paths][95] in the Singularity User Documentation [^E9F6O].
 `args=<string>`        | List of [command-line arguments][94] passed to `singularity exec`. Disable support for this feature by setting `args=disabled`. This will prompt an error for an unrecognized option if the user adds the `--singularity-args=` option. Use an empty string `args=""` to enable support for singularity arguments without a default configuration. Supply default for all users by adding a list of options i.e. `args="--home /network/$USER"`
 
 ## Usage
@@ -191,19 +192,22 @@ vagrant rsync-back el8
 
 ## References
 
-[01] SPANK - Slurm Plug-in Architecture  
+[^bk1WA]: SPANK - Slurm Plug-in Architecture  
 <https://slurm.schedmd.com/spank.html>
 
-[02] Slurm SPANK Header File  
+[^AV7Wy]: Slurm SPANK Header File  
 <https://github.com/SchedMD/slurm/blob/master/slurm/spank.h>
 
-[03] Singularity Container Run-time  
-<https://singularity.hpcng.org>
+[^oJ91o]: SingularityCE, Sylabs Inc.  
+<https://sylabs.io>
 
-[04] singularity Documentation  
-<https://singularity.hpcng.org/docs>
+[^wtl3M]: Apptainer, Linux Foundation  
+<https://apptainer.org>
 
-[05] Fedora Slurm RPM Package  
+[^E9F6O]: Apptainer Documentation  
+<https://apptainer.org/documentation>
+
+[^DoUiD]: Fedora Slurm RPM Package  
 <https://src.fedoraproject.org/rpms/slurm>
 
 [99]: singularity-exec.conf
