@@ -37,7 +37,7 @@ make
 sudo make install
 ```
 
-By default the plug-in `singularity-exec.so` is installed to `/etc/slurm/spank`.
+By default the plug-in `singularity-exec.so` is installed to `/usr/lib64/slurm`.
 
 Restart `slurmd` in order to load the plug-in after installation.
 
