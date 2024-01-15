@@ -28,13 +28,14 @@ File                 | Description
 
 Build this plug-in using `g++` from the GNU Compiler Collection (GCC) version 8
 or newer. The plug-ins are compiled against this header file `spank.h` [02].
-Fedora distributes this file in the `slurm-devel` RPM package [^DoUiD]. 
+Fedora distributes this file in the `slurm-devel` RPM package [^DoUiD]. CMake is
+available via the `cmake` package.
 
 ```sh
-# build the Singularity SPANK plug-in
-make
-# build the plug-in, and install the binary and configuration files
-sudo make install
+cmake -S . -B build # configure the project and choose a build dir
+cmake --build build # build the Singularity SPANK plug-in
+sudo cmake --install build # install the binary and configuration files
+# on older CMake: cmake --build build --target install
 ```
 
 By default the plug-in `singularity-exec.so` is installed to `/usr/lib64/slurm`.
@@ -56,7 +57,7 @@ mkdir /etc/slurm/plugstack.conf.d
 cat > /etc/slurm/plugstack.conf <<EOF
 include /etc/slurm/plugstack.conf.d/*.conf'
 EOF
-# reference the path to the plug-in and the wrapper script 
+# reference the path to the plug-in and the wrapper script
 cat > /etc/slurm/plugstack.conf.d/singularity-exec.conf <<EOF
 required /usr/lib64/slurm/singularity-exec.so default= script=/usr/libexec/slurm-singularity-wrapper.sh bind= args=disabled
 EOF
@@ -69,9 +70,11 @@ required a restart of `slurmd`:
 Option                 | Description
 -----------------------|------------------------------------------------
 `default=<path>`       | Path to the Singularity container launched by default. If this is set user require to explicitly use an empty `--singularity-container=` option to prevent the start of a container.
-`script=<path>`        | Path to the wrapper script which consumes the input arguments and environment variables set by the plugin to launch the Singularity container. 
+`script=<path>`        | Path to the wrapper script which consumes the input arguments and environment variables set by the plugin to launch the Singularity container.
 `bind=<spec>`          | List of paths to bind-mount into the container by default. Please reference the section about [User-defined bind paths][95] in the Singularity User Documentation [^E9F6O].
 `args=<string>`        | List of [command-line arguments][94] passed to `singularity exec`. Disable support for this feature by setting `args=disabled`. This will prompt an error for an unrecognized option if the user adds the `--singularity-args=` option. Use an empty string `args=""` to enable support for singularity arguments without a default configuration. Supply default for all users by adding a list of options i.e. `args="--home /network/$USER"`
+
+Passing `-DINSTALL_PLUGSTACK_CONF=ON` to the CMake configure command will automate the above configuration.
 
 ## Usage
 
@@ -123,7 +126,7 @@ cat > job.sh <<EOF
 #SBATCH --singularity-args="--no-home"
 /bin/grep -i pretty /etc/os-release
 EOF
-SLURM_SINGULARITY_DEBUG=true SLURM_SINGULARITY_GLOBAL=--silent sbatch job.sh 
+SLURM_SINGULARITY_DEBUG=true SLURM_SINGULARITY_GLOBAL=--silent sbatch job.sh
 ```
 
 ## Development
@@ -146,71 +149,31 @@ Start a Vagrant box to build an RPM package:
 # synced from the host
 cd /vagrant
 
-# build and install the plugin...
-sudo make install
+cmake -S . -B build # configure the project and choose a build dir
+cmake --build build # build the Singularity SPANK plug-in
+sudo cmake --install build # install the binary and configuration files
 
-# ...alternativly use the RPM package described in the next section
 sudo systemctl enable --now munge slurmctld slurmd
-```
-
-## Package
-
-Start a Vagrant box to build an RPM package:
-
-```sh
-./containers.sh && vagrant up el8 && vagrant ssh el8 # for example...
-```
-
-Build an RPM package using `slurm-singularity-exec.spec`:
-
-```bash
-# synced from the host
-cd /vagrant
-rpmdev-setuptree
-# prepare the source code archive from this repository
-tar --create \
-    --verbose \
-    --gzip \
-    --exclude=.git \
-    --transform 's,^,slurm-singularity-exec-21.08/,' \
-    --file ~/rpmbuild/SOURCES/slurm-singularity-exec-21.08.tar.gz .
-# install build dependencies if required...
-dnf builddep -y slurm-singularity-exec.spec
-# build the binary package
-rpmbuild -bb slurm-singularity-exec.spec
-# list files in the package
-rpm -ql ~/rpmbuild/RPMS/$(uname -p)/slurm-singularity*
-# install the package
-sudo rpm --force -i ~/rpmbuild/RPMS/$(uname -p)/slurm-singularity-exec-*.rpm
-```
-
-```bash
-# copy the binary package into the working-directory
-cp -v ~/rpmbuild/RPMS/$(uname -p)/slurm-singularity-exec-*.rpm /vagrant
-# install the plugin if required
-vagrant plugin install vagrant-rsync-back
-# download the backage from the Vagrant box
-vagrant rsync-back el8
 ```
 
 ## References
 
-[^bk1WA]: SPANK - Slurm Plug-in Architecture  
+[^bk1WA]: SPANK - Slurm Plug-in Architecture
 <https://slurm.schedmd.com/spank.html>
 
-[^AV7Wy]: Slurm SPANK Header File  
+[^AV7Wy]: Slurm SPANK Header File
 <https://github.com/SchedMD/slurm/blob/master/slurm/spank.h>
 
-[^oJ91o]: SingularityCE, Sylabs Inc.  
+[^oJ91o]: SingularityCE, Sylabs Inc.
 <https://sylabs.io>
 
-[^wtl3M]: Apptainer, Linux Foundation  
+[^wtl3M]: Apptainer, Linux Foundation
 <https://apptainer.org>
 
-[^E9F6O]: Apptainer Documentation  
+[^E9F6O]: Apptainer Documentation
 <https://apptainer.org/documentation>
 
-[^DoUiD]: Fedora Slurm RPM Package  
+[^DoUiD]: Fedora Slurm RPM Package
 <https://src.fedoraproject.org/rpms/slurm>
 
 [99]: singularity-exec.conf
