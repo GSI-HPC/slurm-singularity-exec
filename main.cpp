@@ -1,6 +1,6 @@
 /*{{{
-    Copyright © 2020 GSI Helmholtzzentrum fuer Schwerionenforschung GmbH
-                     Matthias Kretz <m.kretz@gsi.de>
+    Copyright © 2020-2024 GSI Helmholtzzentrum fuer Schwerionenforschung GmbH
+                          Matthias Kretz <m.kretz@gsi.de>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
