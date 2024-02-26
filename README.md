@@ -27,7 +27,7 @@ File                 | Description
 > release. [^bk1WA]
 
 Build this plug-in using `g++` from the GNU Compiler Collection (GCC) version 8
-or newer. The plug-ins are compiled against this header file `spank.h` [02].
+or newer. The plug-ins are compiled against the header file `<slurm/spank.h>`.
 Fedora distributes this file in the `slurm-devel` RPM package [^DoUiD]. CMake is
 available via the `cmake` package.
 
@@ -35,7 +35,7 @@ available via the `cmake` package.
 cmake -S . -B build # configure the project and choose a build dir
 cmake --build build # build the Singularity SPANK plug-in
 sudo cmake --install build # install the binary and configuration files
-# on older CMake: cmake --build build --target install
+# on older CMake: sudo cmake --build build --target install
 ```
 
 By default the plug-in `singularity-exec.so` is installed to `/usr/lib64/slurm`.
@@ -176,7 +176,7 @@ sudo systemctl enable --now munge slurmctld slurmd
 [^DoUiD]: Fedora Slurm RPM Package
 <https://src.fedoraproject.org/rpms/slurm>
 
-[99]: singularity-exec.conf
+[99]: singularity-exec.conf.in
 [98]: slurm-singularity-wrapper.sh
 [97]: containers.sh
 [96]: Vagrantfile
