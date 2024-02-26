@@ -1,0 +1,48 @@
+name: Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    name: Build with Slurm ${{ matrix.slurm }}
+    runs-on: ubuntu-latest
+    container: ${{ matrix.container }}
+
+    env:
+      SOURCEDIR: ${{ github.workspace }}
+      BUILDDIR: ${{ github.workspace}}/build
+
+    strategy:
+      fail-fast: false
+
+      matrix:
+        container:
+          - ubuntu:lunar
+          - ubuntu:mantic
+          - ubuntu:noble
+        include:
+          - container: ubuntu:lunar
+            slurm: 22.05
+          - container: ubuntu:mantic
+            slurm: 23.02
+          - container: ubuntu:noble
+            slurm: 23.11
+
+    steps:
+      - name: Install dependencies
+        run: sudo apt-get install -y cmake ninja-build libslurm-dev
+
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -GNinja -S $SOURCEDIR -B $BUILDDIR
+
+      - name: Build
+        run: cmake --build $BUILDDIR
+    #
+    # - name: Test
+    #   run: ctest --test-dir $BUILDDIR
