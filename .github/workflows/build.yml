@@ -8,9 +8,11 @@ on:
 
 jobs:
   build:
-    name: Build with Slurm ${{ matrix.slurm }}
+    name: Slurm ${{ matrix.slurm }}
     runs-on: ubuntu-latest
-    container: ${{ matrix.container }}
+    container:
+      image: ${{ matrix.container }}
+      options: --user root
 
     env:
       SOURCEDIR: ${{ github.workspace }}
@@ -33,8 +35,9 @@ jobs:
             slurm: 23.11
 
     steps:
-      - name: Install dependencies
-        run: sudo apt-get install -y cmake ninja-build libslurm-dev
+      - run: apt-get update -y
+
+      - run: apt-get install -y cmake g++ ninja-build libslurm-dev
 
       - uses: actions/checkout@v4
 
