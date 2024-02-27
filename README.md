@@ -45,11 +45,11 @@ CMake option                     | Default                                      
 `-DINSTALL_PLUGSTACK_CONF=ON`    | `OFF`                                                 | Whether to install a plugin config file
 `-DSLURM_SYSCONFDIR=...`         | `/etc/slurm`                                          | Slurm sysconfdir
 `-DSLURM_PLUGSTACK_CONF_D=...`   | `${SLURM_SYSCONFDIR}/plugstack.conf.d`                | Slurm plugstack conf dir
-`-DPLUGIN_DEFAULT_ARG=...`       | `""`                                                  | Plugin default= arg`
+`-DPLUGIN_DEFAULT_ARG=...`       | `""`                                                  | Plugin default= arg
 `-DPLUGIN_BIND_ARG=...`          | `${SLURM_SYSCONFDIR},/var/spool/slurm,/var/run/munge` | Plugin bind= arg
 `-DPLUGIN_EXTRA_ARGS=...`        | `""`                                                  | Plugin args= arg
 `-DSLURM_INCLUDE_DIR=...`        | Detected by CMake, typically `/usr/include`           | Slurm include dir passed to compiler via `-I` so `#include <slurm/spank.h>` resolves
-`-DCMAKE_INSTALL_LIBEXECDIR=...` | `libexec` on RHEL-based systems                       | FHS "internal binaries" directory
+`-DCMAKE_INSTALL_LIBEXECDIR=...` | `libexec` on RHEL-based systems                       | FHS "internal binaries" directory [^sSrfT]
 
 ## Install
 
