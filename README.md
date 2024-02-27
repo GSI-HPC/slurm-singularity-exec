@@ -31,16 +31,37 @@ or newer. The plug-ins are compiled against the header file `<slurm/spank.h>`.
 Fedora distributes this file in the `slurm-devel` RPM package [^DoUiD]. CMake is
 available via the `cmake` package.
 
+Choose a `<build-dir>` to configure and build the plugin:
 ```sh
-cmake -S . -B build # configure the project and choose a build dir
-cmake --build build # build the Singularity SPANK plug-in
-sudo cmake --install build # install the binary and configuration files
-# on older CMake: sudo cmake --build build --target install
+cmake -S <source-dir> -B <build-dir> # configure
+cmake --build <build-dir> # build the Singularity SPANK plug-in
 ```
 
-By default the plug-in `singularity-exec.so` is installed to `/usr/lib64/slurm`.
+You may customize the configure phase further via the following CMake options:
 
-Restart `slurmd` in order to load the plug-in after installation.
+CMake option                     | Default                                               | Description
+---------------------------------|-------------------------------------------------------|-------------------------------------------------------------------------------------
+`--install-prefix <install-dir>` | `/usr`                                                | Equivalent to `-DCMAKE_INSTALL_PREFIX=<install-dir>`
+`-DINSTALL_PLUGSTACK_CONF=ON`    | `OFF`                                                 | Whether to install a plugin config file
+`-DSLURM_SYSCONFDIR=...`         | `/etc/slurm`                                          | Slurm sysconfdir
+`-DSLURM_PLUGSTACK_CONF_D=...`   | `${SLURM_SYSCONFDIR}/plugstack.conf.d`                | Slurm plugstack conf dir
+`-DPLUGIN_DEFAULT_ARG=...`       | `""`                                                  | Plugin default= arg`
+`-DPLUGIN_BIND_ARG=...`          | `${SLURM_SYSCONFDIR},/var/spool/slurm,/var/run/munge` | Plugin bind= arg
+`-DPLUGIN_EXTRA_ARGS=...`        | `""`                                                  | Plugin args= arg
+`-DSLURM_INCLUDE_DIR=...`        | Detected by CMake, typically `/usr/include`           | Slurm include dir passed to compiler via `-I` so `#include <slurm/spank.h>` resolves
+`-DCMAKE_INSTALL_LIBEXECDIR=...` | `libexec` on RHEL-based systems                       | FHS "internal binaries" directory
+
+## Install
+
+```sh
+[sudo] cmake --install <build-dir>
+```
+
+`sudo` is needed to install to system directories like `/usr`.
+
+By default, installation directories are chosen to be FSH-compliant [^sSrfT] as
+implemented by the CMake "GNUInstallDirs" module [^dsfDS].
+
 
 ## Configuration
 
@@ -75,6 +96,9 @@ Option                 | Description
 `args=<string>`        | List of [command-line arguments][94] passed to `singularity exec`. Disable support for this feature by setting `args=disabled`. This will prompt an error for an unrecognized option if the user adds the `--singularity-args=` option. Use an empty string `args=""` to enable support for singularity arguments without a default configuration. Supply default for all users by adding a list of options i.e. `args="--home /network/$USER"`
 
 Passing `-DINSTALL_PLUGSTACK_CONF=ON` to the CMake configure command will automate the above configuration.
+
+Restart `slurmd` in order to load the plug-in after installation and configuration.
+
 
 ## Usage
 
@@ -208,6 +232,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 [^DoUiD]: Fedora Slurm RPM Package
 <https://src.fedoraproject.org/rpms/slurm>
+
+[^sSrfT]: Filesystem Hierarchy Standard
+<https://refspecs.linuxfoundation.org/fhs.shtml>
+
+[^dsfDS]: CMake "GNUInstallDirs" module
+<https://cmake.org/cmake/help/latest/module/GNUInstallDirs.html>
 
 [99]: singularity-exec.conf.in
 [98]: slurm-singularity-wrapper.sh
