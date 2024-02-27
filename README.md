@@ -1,5 +1,7 @@
 # Slurm Singularity SPANK Plugin
 
+[![Build](https://github.com/GSI-HPC/slurm-singularity-exec/actions/workflows/build.yml/badge.svg)](https://github.com/GSI-HPC/slurm-singularity-exec/actions/workflows/build.yml)
+
 The Singularity SPANK plugin provides the users with an interface to launch an
 application within a Linux container. The plug-in adds multiple command-line
 options to the `salloc`, `srun` and `sbatch` commands. These options are then
