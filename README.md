@@ -129,6 +129,19 @@ EOF
 SLURM_SINGULARITY_DEBUG=true SLURM_SINGULARITY_GLOBAL=--silent sbatch job.sh
 ```
 
+## RPM Packaging
+
+While these packages are tailored to the GSI HPC Cluster environment, you may
+still find them interesting for reference or to fork from:
+
+* [el9](https://git.gsi.de/SDE/packages/slurm-singularity-exec/-/tree/virgo-3-el9):
+  Uses the new [`%autorelease` and `%autochangelog` macros](https://docs.pagure.org/fedora-infra.rpmautospec/index.html).
+  If you build via [`mock`](https://github.com/rpm-software-management/mock),
+  it requires `--enable-plugin=rpmautospec`.
+* [el8](https://git.gsi.de/SDE/packages/slurm-singularity-exec/-/tree/virgo-3-el8):
+  Traditional manually maintained Release and Changelog fields.
+
+
 ## Development
 
 Build the required singularity containers with the script [`containers.sh`][97].
