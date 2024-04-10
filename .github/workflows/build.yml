@@ -2,7 +2,7 @@ name: Build
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, add-runtime-slurm-test ]
   pull_request:
     branches: [ main ]
 
@@ -10,9 +10,9 @@ jobs:
   build:
     name: Slurm ${{ matrix.slurm }}
     runs-on: ubuntu-latest
-    container:
-      image: ${{ matrix.container }}
-      options: --user root
+    # container:
+    #   image: ${{ matrix.container }}
+    #   options: --user root
 
     env:
       SOURCEDIR: ${{ github.workspace }}
@@ -23,29 +23,31 @@ jobs:
 
       matrix:
         container:
-          - ubuntu:lunar
-          - ubuntu:mantic
+          # - ubuntu:lunar
+          # - ubuntu:mantic
           - ubuntu:noble
         include:
-          - container: ubuntu:lunar
-            slurm: 22.05
-          - container: ubuntu:mantic
-            slurm: 23.02
+          # - container: ubuntu:lunar
+          #   slurm: 22.05
+          # - container: ubuntu:mantic
+          #   slurm: 23.02
           - container: ubuntu:noble
             slurm: 23.11
 
     steps:
-      - run: apt-get update -y
+      # - run: apt-get update -y
 
-      - run: apt-get install -y cmake g++ ninja-build libslurm-dev
-
-      - uses: actions/checkout@v4
-
-      - name: Configure
-        run: cmake -GNinja -S $SOURCEDIR -B $BUILDDIR
-
-      - name: Build
-        run: cmake --build $BUILDDIR
+      # - run: apt-get install -y cmake g++ ninja-build libslurm-dev
+      #
+      # - uses: actions/checkout@v4
+      #
+      # - name: Configure
+      #   run: cmake -GNinja -S $SOURCEDIR -B $BUILDDIR
+      #
+      # - name: Build
+      #   run: cmake --build $BUILDDIR
     #
     # - name: Test
     #   run: ctest --test-dir $BUILDDIR
+      # - run: apt-get install -y podman
+      - run: podman network create asdf
