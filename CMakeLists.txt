@@ -9,6 +9,7 @@ if (NOT CMAKE_BUILD_TYPE)
 endif()
 
 option(INSTALL_PLUGSTACK_CONF "Whether to install a plugstack config" OFF)
+option(BUILD_TESTING "Build and enable tests" ON)
 
 set(SLURM_SYSCONFDIR /etc/slurm CACHE STRING "Slurm sysconfdir")
 set(SLURM_PLUGSTACK_CONF_D ${SLURM_SYSCONFDIR}/plugstack.conf.d
@@ -43,4 +44,11 @@ configure_file(${plugstackconf}.in ${plugstackconf} @ONLY)
 
 if (INSTALL_PLUGSTACK_CONF)
   install(FILES ${CMAKE_BINARY_DIR}/${plugstackconf} DESTINATION ${SLURM_PLUGSTACK_CONF_D})
+endif()
+
+# Testing
+if (BUILD_TESTING)
+  include(CTest)
+  enable_testing()
+  add_subdirectory(tests)
 endif()

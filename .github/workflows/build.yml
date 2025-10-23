@@ -23,21 +23,18 @@ jobs:
 
       matrix:
         container:
-          - ubuntu:lunar
-          - ubuntu:mantic
           - ubuntu:noble
+          - ubuntu:plucky
         include:
-          - container: ubuntu:lunar
-            slurm: 22.05
-          - container: ubuntu:mantic
-            slurm: 23.02
           - container: ubuntu:noble
             slurm: 23.11
+          - container: ubuntu:plucky
+            slurm: 24.11
 
     steps:
       - run: apt-get update -y
 
-      - run: apt-get install -y cmake g++ ninja-build libslurm-dev
+      - run: apt-get install -y cmake g++ ninja-build libslurm-dev bats
 
       - uses: actions/checkout@v4
 
@@ -46,6 +43,6 @@ jobs:
 
       - name: Build
         run: cmake --build $BUILDDIR
-    #
-    # - name: Test
-    #   run: ctest --test-dir $BUILDDIR
+
+      - name: Test
+        run: ctest --test-dir $BUILDDIR --output-on-failure
