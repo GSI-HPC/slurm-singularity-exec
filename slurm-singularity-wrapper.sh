@@ -15,7 +15,7 @@ run_in() {
 
   local container="$1"
   shift
-  test -f "$container" || _error "$container missing"
+  test -e "$container" || _error "$container missing"
   _debug "SLURM_SINGULARITY_CONTAINER=$container"
 
   local -a args
