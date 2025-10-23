@@ -18,16 +18,18 @@ run_in() {
   test -f "$container" || _error "$container missing"
   _debug "SLURM_SINGULARITY_CONTAINER=$container"
 
-  local args="$SLURM_SINGULARITY_ARGS"
-  _debug "SLURM_SINGULARITY_ARGS=$args"
+  local -a args
+  read -ra args <<< "$SLURM_SINGULARITY_ARGS"
+  _debug "SLURM_SINGULARITY_ARGS=${args[*]}"
 
   local bind="$SLURM_SINGULARITY_BIND"
   _debug "SLURM_SINGULARITY_BIND=$bind"
 
-  local global="$SLURM_SINGULARITY_GLOBAL"
-  _debug "SLURM_SINGULARITY_GLOBAL=$global"
+  local -a global
+  read -ra global <<< "$SLURM_SINGULARITY_GLOBAL"
+  _debug "SLURM_SINGULARITY_GLOBAL=${global[*]}"
 
-  local -a command=(singularity $global exec --bind="$bind" $args "$container" "$@")
+  local -a command=(singularity "${global[@]}" exec --bind="$bind" "${args[@]}" "$container" "$@")
   _debug "${command[*]}"
 
   # export the PATH and LD_LIBRARY_PATH environment variable to the container
