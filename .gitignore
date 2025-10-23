@@ -1,3 +1,5 @@
 singularity-exec.so
 *.rpm
 .vagrant/
+build/
+install/
