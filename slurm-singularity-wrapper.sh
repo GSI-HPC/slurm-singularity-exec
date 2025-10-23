@@ -36,7 +36,7 @@ run_in() {
   export APPTAINERENV_PREPEND_PATH="$PATH"
   export APPTAINERENV_LD_LIBRARY_PATH="$LD_LIBRARY_PATH"
 
-  echo "Start container image $container"
+  echo 1>&2 "Start container image $container"
   exec "${command[@]}"
 }
 
