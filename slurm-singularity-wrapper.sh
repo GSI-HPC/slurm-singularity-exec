@@ -11,6 +11,14 @@ _error() {
   exit 1
 }
 
+# Execute a command within a Singularity/Apptainer container
+# Arguments:
+#   $1 - Path to container image file
+#   $@ - Command and arguments to execute inside the container
+# Environment variables (optional):
+#   SLURM_SINGULARITY_ARGS   - Space-separated singularity exec arguments
+#   SLURM_SINGULARITY_BIND   - Comma-separated bind mount paths (native format)
+#   SLURM_SINGULARITY_GLOBAL - Space-separated global singularity arguments
 run_in() {
 
   local container="$1"
