@@ -27,8 +27,8 @@ run_in() {
   local global="$SLURM_SINGULARITY_GLOBAL"
   _debug "SLURM_SINGULARITY_GLOBAL=$global"
 
-  local command="singularity $global exec --bind=$bind $args $container $@"
-  _debug "$command"
+  local -a command=(singularity $global exec --bind="$bind" $args "$container" "$@")
+  _debug "${command[*]}"
 
   # export the PATH and LD_LIBRARY_PATH environment variable to the container
   #export SINGULARITYENV_PATH=$PATH
@@ -37,7 +37,7 @@ run_in() {
   export APPTAINERENV_LD_LIBRARY_PATH="$LD_LIBRARY_PATH"
 
   echo "Start container image $container"
-  exec $command
+  exec "${command[@]}"
 }
 
 run_in "$@"
