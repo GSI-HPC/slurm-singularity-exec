@@ -2,12 +2,12 @@
 
 _debug() {
   if [ "$SLURM_SINGULARITY_DEBUG" = "true" ]; then
-    echo 1>&2 "Debug: $@"
+    echo 1>&2 "Debug: $*"
   fi
 }
 
 _error() {
-  echo 1>&2 "Error: $@"
+  echo 1>&2 "Error: $*"
   exit 1
 }
 
