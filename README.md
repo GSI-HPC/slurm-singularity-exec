@@ -110,7 +110,7 @@ Option                           | Description
 ---------------------------------|--------------------------------------
 `--singularity-container=`       | Path to the Singularity container. Equivalent to using the environment variable `SLURM_SINGULARITY_CONTAINER`.
 `--singularity-bind=`            | [User-defined bind paths][95] will be appended to the defaults specified in the plug-in configuration. Equivalent to using the environment variable `SLURM_SINGULARITY_BIND`.
-`--singularity-args=`            | List of `singulairy exec` [command-line arguments][94].
+`--singularity-args=`            | List of `singularity exec` [command-line arguments][94]. Equivalent to using the environment variable `SLURM_SINGULARITY_ARGS`.
 `--singularity-no-bind-defaults` | Disable the bind mount defaults specified in the plug-in configuration.
 
 The implementation of [slurm-singularity-wrapper.sh][98] adds additional environment variables:
@@ -133,7 +133,7 @@ SLURM_SINGULARITY_DEBUG=true SLURM_SINGULARITY_GLOBAL=--silent \
 Executing it will generate output similar to:
 
 ```
-Start Singularity container /tmp/debian10.sif
+Start container image /tmp/debian10.sif
 Debug: SLURM_SINGULARITY_CONTAINER=/tmp/debian10.sif
 Debug: SLURM_SINGULARITY_ARGS=--no-home
 Debug: SLURM_SINGULARITY_BIND=/etc/slurm,/var/run/munge,/var/spool/slurm
