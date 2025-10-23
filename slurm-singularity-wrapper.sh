@@ -33,8 +33,8 @@ run_in() {
   # export the PATH and LD_LIBRARY_PATH environment variable to the container
   #export SINGULARITYENV_PATH=$PATH
   #export SINGULARITYENV_LD_LIBRARY_PATH=$LD_LIBRARY_PATH
-  export APPTAINERENV_PREPEND_PATH=$PATH
-  export APPTAINERENV_LD_LIBRARY_PATH=$LD_LIBRARY_PATH
+  export APPTAINERENV_PREPEND_PATH="$PATH"
+  export APPTAINERENV_LD_LIBRARY_PATH="$LD_LIBRARY_PATH"
 
   echo "Start container image $container"
   exec $command
