@@ -198,7 +198,7 @@ sudo systemctl enable --now munge slurmctld slurmd
 ## License
 
 ```
-Copyright © 2020-2024 GSI Helmholtzzentrum fuer Schwerionenforschung GmbH
+Copyright © 2020-2025 GSI Helmholtzzentrum fuer Schwerionenforschung GmbH
                       Matthias Kretz <m.kretz@gsi.de>
 
 This program is free software: you can redistribute it and/or modify
