@@ -1,0 +1,27 @@
+# Docker Compose configuration for testing slurm-singularity-exec
+# Mirrors the GitHub Actions workflow matrix
+
+services:
+  slurm-23.11:
+    build:
+      context: ..
+      dockerfile: tests/Dockerfile
+      args:
+        UBUNTU_VERSION: noble
+    volumes:
+      - ..:/workspace:z
+    working_dir: /workspace
+    environment:
+      - BUILD_DIR=build-23.11
+
+  slurm-24.11:
+    build:
+      context: ..
+      dockerfile: tests/Dockerfile
+      args:
+        UBUNTU_VERSION: plucky
+    volumes:
+      - ..:/workspace:z
+    working_dir: /workspace
+    environment:
+      - BUILD_DIR=build-24.11

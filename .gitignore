@@ -3,3 +3,4 @@ singularity-exec.so
 .vagrant/
 build/
 install/
+build-*
