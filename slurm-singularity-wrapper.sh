@@ -1,7 +1,5 @@
 #!/bin/bash
 
-VERSION=1.0
-
 _debug() {
   if [ "$SLURM_SINGULARITY_DEBUG" = "true" ]; then
     echo 1>&2 "Debug: $@"
