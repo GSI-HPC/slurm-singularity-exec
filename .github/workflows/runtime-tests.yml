@@ -1,0 +1,37 @@
+name: Runtime Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  runtime-test:
+    name: Slurm ${{ matrix.slurm }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - ubuntu_version: plucky
+            slurm: 24.11
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Run runtime integration tests
+        run: |
+          cd tests/runtime
+          UBUNTU_VERSION=${{ matrix.ubuntu_version }} ./run-tests.sh
+        env:
+          UBUNTU_VERSION: ${{ matrix.ubuntu_version }}
+          BUILDX_CACHE_FROM: type=gha,scope=${{ matrix.ubuntu_version }}
+          BUILDX_CACHE_TO: type=gha,mode=max,scope=${{ matrix.ubuntu_version }}
