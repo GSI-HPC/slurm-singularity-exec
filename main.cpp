@@ -210,6 +210,7 @@ struct singularity_exec
   inline static std::string s_container_name = {};
   inline static std::string s_singularity_script = "/usr/lib/slurm/slurm-singularity-wrapper.sh";
   inline static std::string s_singularity_args = {};
+  inline static std::string s_singularity_global = {};
   inline static std::string s_bind_defaults = {};
   inline static std::string s_bind_mounts = {};
   inline static bool s_no_args_option = false;
@@ -323,6 +324,8 @@ struct singularity_exec
               s_singularity_script = arg.substr(7);
             else if (starts_with(arg, "bind="))
               s_bind_defaults = arg.substr(5);
+            else if (starts_with(arg, "global="))
+              s_singularity_global = arg.substr(7);
             else if (arg == "args=disabled")
               s_no_args_option = true;
             else if (starts_with(arg, "args=\""))
@@ -343,6 +346,7 @@ struct singularity_exec
                   "/usr/lib/slurm/slurm-singularity-wrapper.sh\n"
                   "bind=src[:dest[:opts]][,src[:dest[:opts]]]*\n"
                   "                              set default bind mounts\n"
+                  "global=<global options>       set default global singularity options\n"
                   "args=disabled                 Disable custom arguments\n"
                   "args=\"<singulary args>\"       quotes are mandatory; "
                   "string may be empty\n",
@@ -424,10 +428,11 @@ struct singularity_exec
               s_bind_mounts = s_bind_defaults + ',' + s_bind_mounts;
           }
 
-        // unconditionally set these two variables so they don't become an
+        // unconditionally set these three variables so they don't become an
         // accidental user interface
         s.setenv("SLURM_SINGULARITY_BIND", s_bind_mounts.c_str());
         s.setenv("SLURM_SINGULARITY_ARGS", s_singularity_args.c_str());
+        s.setenv("SLURM_SINGULARITY_GLOBAL", s_singularity_global.c_str());
         std::vector<char*> argv = s.job_argument_vector();
         argv.insert(argv.begin(),
                     { s_singularity_script.data(), s_container_name.data() });
