@@ -7,6 +7,14 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
+# Configuration - can be overridden via environment variables
+: "${RETRY_TIMES:=15}"
+: "${RETRY_DELAY:=2}"
+: "${JOB_RETRY_DELAY:=1}"
+: "${JOB_MAX_WAIT:=120}"
+: "${JOB_POLL_INTERVAL:=3}"
+: "${LOG_TAIL_LINES:=100}"
+
 echo "::group::Clean up previous containers"
 docker compose down -v 2>/dev/null || true
 echo "::endgroup::"
@@ -38,26 +46,30 @@ echo "::endgroup::"
 
 echo "::group::Wait for services"
 echo "Waiting for slurmctld to be ready..."
-# Give slurmctld up to 30 seconds to start (15 retries * 2 seconds)
-RETRIES=15
-DELAY=2
-for i in $(seq 1 $RETRIES); do
+# Give slurmctld up to RETRY_TIMES * RETRY_DELAY seconds to start
+for i in $(seq 1 $RETRY_TIMES); do
     if docker compose exec -T slurmctld scontrol ping >/dev/null 2>&1; then
-        echo "✓ Slurm cluster is ready (attempt $i/$RETRIES)"
+        echo "✓ Slurm cluster is ready (attempt $i/$RETRY_TIMES)"
         break
     fi
-    if [ $i -eq $RETRIES ]; then
-        echo "ERROR: slurmctld not ready after $((RETRIES * DELAY)) seconds"
+    if [ $i -eq $RETRY_TIMES ]; then
+        echo "ERROR: slurmctld not ready after $((RETRY_TIMES * RETRY_DELAY)) seconds"
         docker compose logs slurmctld
         exit 1
     fi
-    sleep $DELAY
+    sleep $RETRY_DELAY
 done
 echo "::endgroup::"
 
 echo "::group::Run integration tests"
 set +e  # Temporarily disable exit on error
-docker compose exec -T slurmctld /workspace/tests/runtime/test-integration.sh
+docker compose exec -T \
+    -e RETRY_TIMES="$RETRY_TIMES" \
+    -e RETRY_DELAY="$RETRY_DELAY" \
+    -e JOB_RETRY_DELAY="$JOB_RETRY_DELAY" \
+    -e JOB_MAX_WAIT="$JOB_MAX_WAIT" \
+    -e JOB_POLL_INTERVAL="$JOB_POLL_INTERVAL" \
+    slurmctld /workspace/tests/runtime/test-integration.sh
 TEST_EXIT_CODE=$?
 set -e  # Re-enable exit on error
 echo "::endgroup::"
@@ -76,12 +88,12 @@ fi
 
 # Show logs if tests failed
 if [ $TEST_EXIT_CODE -ne 0 ]; then
-    echo "::group::slurmctld logs (last 100 lines)"
-    docker compose logs --tail=100 slurmctld
+    echo "::group::slurmctld logs (last $LOG_TAIL_LINES lines)"
+    docker compose logs --tail="$LOG_TAIL_LINES" slurmctld
     echo "::endgroup::"
 
-    echo "::group::slurmd logs (last 100 lines)"
-    docker compose logs --tail=100 slurmd
+    echo "::group::slurmd logs (last $LOG_TAIL_LINES lines)"
+    docker compose logs --tail="$LOG_TAIL_LINES" slurmd
     echo "::endgroup::"
 
     echo "::group::Container status"

@@ -9,7 +9,7 @@ The runtime tests:
 2. Build and install the slurm-singularity-exec plugin
 3. Verify plugin files are installed (library and configuration)
 4. Verify plugin CLI options appear in `sbatch --help` and `srun --help`
-5. Verify SPANK plugin loads when jobs run (check slurmd logs)
+5. Verify SPANK plugin loads when jobs run (check container logs)
 6. Submit and run a containerized test job (if singularity/apptainer is available)
 
 ## Docker Compose Architecture
@@ -28,7 +28,7 @@ The test infrastructure consists of three services orchestrated by Docker Compos
 
 | Volume | Containers | Access | Purpose |
 |--------|------------|--------|---------|
-| `../..` → `/workspace` | All | Read-only (`:z`) | Source code and build scripts |
+| `../..` → `/workspace` | All | Read-write (`:z`) | Source code and build scripts |
 | `plugin-build` | All | Read-write | Shared build artifacts (plugin binaries) |
 | `slurmctld-state` | slurmctld | Read-write | Controller state persistence |
 | `slurmd-state` | slurmd | Read-write | Daemon state persistence |
@@ -57,6 +57,41 @@ The test infrastructure consists of three services orchestrated by Docker Compos
 ### Network
 
 All services communicate via the `slurm-net` bridge network, allowing hostname-based service discovery.
+
+## Configuration
+
+The test infrastructure uses environment variables for configuration, allowing customization without modifying scripts:
+
+### Timing Configuration (set in run-tests.sh, passed to test-integration.sh)
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `RETRY_TIMES` | 15 | Number of retry attempts for cluster readiness |
+| `RETRY_DELAY` | 2 | Delay in seconds between retry attempts |
+| `JOB_RETRY_DELAY` | 1 | Delay in seconds between job state checks |
+| `JOB_MAX_WAIT` | 120 | Maximum wait time in seconds for job completion |
+| `JOB_POLL_INTERVAL` | 3 | Interval in seconds between job status polls |
+| `LOG_TAIL_LINES` | 100 | Number of log lines to show on failure |
+
+### Container Path Configuration (test-integration.sh only)
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PLUGIN_LIBEXEC_DIR` | `/usr/libexec` | Plugin library directory |
+| `SLURM_SYSCONFDIR` | `/etc/slurm` | Slurm configuration directory |
+| `SLURM_JOB_SPOOL` | `/var/spool/slurm-jobs` | Job output spool directory |
+| `SLURM_LOG_DIR` | `/var/log/slurm` | Slurm log directory |
+| `SLURM_PARTITION` | `debug` | Default Slurm partition name |
+
+### Example: Custom Timing
+
+```bash
+# Faster retries for local testing
+RETRY_TIMES=5 RETRY_DELAY=1 ./run-tests.sh
+
+# Longer timeouts for slow environments
+JOB_MAX_WAIT=300 ./run-tests.sh
+```
 
 ## Quick Start
 

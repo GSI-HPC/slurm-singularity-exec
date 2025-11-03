@@ -4,22 +4,37 @@
 
 set -e
 
+# Configuration - can be overridden via environment variables
+: "${PLUGIN_LIBEXEC_DIR:=/usr/libexec}"
+: "${SLURM_SYSCONFDIR:=/etc/slurm}"
+: "${SLURM_JOB_SPOOL:=/var/spool/slurm-jobs}"
+: "${SLURM_LOG_DIR:=/var/log/slurm}"
+: "${SLURM_PARTITION:=debug}"
+: "${RETRY_TIMES:=30}"
+: "${RETRY_DELAY:=2}"
+: "${JOB_RETRY_DELAY:=1}"
+: "${JOB_MAX_WAIT:=120}"
+: "${JOB_POLL_INTERVAL:=3}"
+
+PLUGIN_SO="${PLUGIN_LIBEXEC_DIR}/slurm-singularity-exec.so"
+PLUGSTACK_CONF="${SLURM_SYSCONFDIR}/plugstack.conf.d/singularity-exec.conf"
+
 echo "=== Slurm Singularity Plugin Runtime Tests ==="
 echo
 
 # Test 1: Verify plugin files are installed
 echo "Test 1: Verifying plugin installation..."
-if [ -f "/usr/libexec/slurm-singularity-exec.so" ]; then
-    echo "✓ Found plugin library: /usr/libexec/slurm-singularity-exec.so"
+if [ -f "$PLUGIN_SO" ]; then
+    echo "✓ Found plugin library: $PLUGIN_SO"
 else
-    echo "✗ ERROR: Plugin library not found at /usr/libexec/slurm-singularity-exec.so"
+    echo "✗ ERROR: Plugin library not found at $PLUGIN_SO"
     exit 1
 fi
 
-if [ -f "/etc/slurm/plugstack.conf.d/singularity-exec.conf" ]; then
-    echo "✓ Found plugin config: /etc/slurm/plugstack.conf.d/singularity-exec.conf"
+if [ -f "$PLUGSTACK_CONF" ]; then
+    echo "✓ Found plugin config: $PLUGSTACK_CONF"
 else
-    echo "✗ ERROR: Plugin config not found at /etc/slurm/plugstack.conf.d/singularity-exec.conf"
+    echo "✗ ERROR: Plugin config not found at $PLUGSTACK_CONF"
     exit 1
 fi
 echo
@@ -84,7 +99,7 @@ echo
 if [ "$SKIP_CONTAINER_TEST" != "true" ]; then
     echo "Test 5: Creating a test container image..."
     # Use shared directory so container is accessible from both slurmctld and slurmd
-    TEST_CONTAINER="/var/spool/slurm-jobs/test-debian.sif"
+    TEST_CONTAINER="${SLURM_JOB_SPOOL}/test-debian.sif"
     if [ ! -f "$TEST_CONTAINER" ]; then
         # Create a minimal Debian container
         $SINGULARITY_CMD pull "$TEST_CONTAINER" docker://debian:stable-slim
@@ -102,23 +117,23 @@ fi
 
 # Test 6: Wait for Slurm to be ready
 echo "Test 6: Waiting for Slurm cluster to be ready..."
-if ! retry --times=30 --delay=2 -- scontrol ping >/dev/null 2>&1; then
+if ! retry --times="$RETRY_TIMES" --delay="$RETRY_DELAY" -- scontrol ping >/dev/null 2>&1; then
     echo "✗ ERROR: Slurm controller not responding"
     exit 1
 fi
 echo "✓ Slurm controller is responding"
 
 # Wait for node to be ready
-if ! retry --times=30 --delay=2 -- bash -c 'sinfo -h -o "%T" 2>/dev/null | grep -qE "idle|mixed|alloc"'; then
+if ! retry --times="$RETRY_TIMES" --delay="$RETRY_DELAY" -- bash -c 'sinfo -h -o "%T" 2>/dev/null | grep -qE "idle|mixed|alloc"'; then
     echo "✗ ERROR: No compute nodes are ready"
     echo "Showing sinfo output:"
     sinfo
     echo
     echo "Showing last 50 lines of slurmd logs:"
-    tail -50 /var/log/slurm/slurmd.log 2>/dev/null || echo "Could not read slurmd logs"
+    tail -50 "${SLURM_LOG_DIR}/slurmd.log" 2>/dev/null || echo "Could not read slurmd logs"
     echo
     echo "Showing last 50 lines of slurmctld logs:"
-    tail -50 /var/log/slurm/slurmctld.log 2>/dev/null || echo "Could not read slurmctld logs"
+    tail -50 "${SLURM_LOG_DIR}/slurmctld.log" 2>/dev/null || echo "Could not read slurmctld logs"
     exit 1
 fi
 echo "✓ Compute node is ready"
@@ -140,7 +155,7 @@ fi
 
 # Wait for job to complete
 echo "  Waiting for job $TEST_JOB_ID to complete..."
-retry --times=30 --delay=1 -- bash -c "scontrol show job $TEST_JOB_ID 2>/dev/null | grep -qE 'JobState=(COMPLETED|FAILED|CANCELLED)'" >/dev/null 2>&1
+retry --times="$RETRY_TIMES" --delay="$JOB_RETRY_DELAY" -- bash -c "scontrol show job $TEST_JOB_ID 2>/dev/null | grep -qE 'JobState=(COMPLETED|FAILED|CANCELLED)'" >/dev/null 2>&1
 
 JOB_STATE=$(scontrol show job "$TEST_JOB_ID" 2>/dev/null | grep "JobState" | awk '{print $1}' | cut -d= -f2)
 if [ "$JOB_STATE" = "COMPLETED" ]; then
@@ -158,24 +173,24 @@ echo
 if [ "$SKIP_CONTAINER_TEST" != "true" ]; then
     echo "Test 8: Submitting a containerized test job..."
 JOB_SCRIPT=$(mktemp /tmp/test_job.XXXXXX.sh)
-cat > "$JOB_SCRIPT" <<'JOBEOF'
+cat > "$JOB_SCRIPT" <<JOBEOF
 #!/bin/bash
 #SBATCH --job-name=test-singularity
-#SBATCH --output=/var/spool/slurm-jobs/test_job_%j.out
-#SBATCH --error=/var/spool/slurm-jobs/test_job_%j.err
-#SBATCH --partition=debug
+#SBATCH --output=${SLURM_JOB_SPOOL}/test_job_%j.out
+#SBATCH --error=${SLURM_JOB_SPOOL}/test_job_%j.err
+#SBATCH --partition=${SLURM_PARTITION}
 #SBATCH --time=00:01:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 
-echo "Job started at: $(date)"
-echo "Running on node: $(hostname)"
-echo "Job ID: $SLURM_JOB_ID"
+echo "Job started at: \$(date)"
+echo "Running on node: \$(hostname)"
+echo "Job ID: \$SLURM_JOB_ID"
 
 # Test command inside container
 cat /etc/os-release | grep -i pretty
 
-echo "Job completed at: $(date)"
+echo "Job completed at: \$(date)"
 JOBEOF
 
 chmod +x "$JOB_SCRIPT"
@@ -192,11 +207,10 @@ echo
 
 # Test 9: Wait for job to complete
 echo "Test 9: Waiting for job to complete..."
-max_wait=120
 waited=0
 while true; do
     JOB_STATE=$(scontrol show job "$JOB_ID" 2>/dev/null | grep "JobState=" | sed 's/.*JobState=\([^ ]*\).*/\1/')
-    
+
     if [ "$JOB_STATE" = "COMPLETED" ]; then
         echo "✓ Job completed successfully"
         break
@@ -204,27 +218,27 @@ while true; do
         echo "✗ ERROR: Job failed with state: $JOB_STATE"
         scontrol show job "$JOB_ID"
         exit 1
-    elif [ $waited -ge $max_wait ]; then
-        echo "✗ ERROR: Job did not complete within ${max_wait}s"
+    elif [ $waited -ge $JOB_MAX_WAIT ]; then
+        echo "✗ ERROR: Job did not complete within ${JOB_MAX_WAIT}s"
         scontrol show job "$JOB_ID"
         scancel "$JOB_ID"
         exit 1
     fi
-    
-    echo "  Job state: $JOB_STATE (${waited}s/${max_wait}s)"
-    sleep 3
-    waited=$((waited + 3))
+
+    echo "  Job state: $JOB_STATE (${waited}s/${JOB_MAX_WAIT}s)"
+    sleep "$JOB_POLL_INTERVAL"
+    waited=$((waited + JOB_POLL_INTERVAL))
 done
 echo
 
 # Test 10: Check job output
 echo "Test 10: Checking job output..."
-JOB_OUTPUT="/var/spool/slurm-jobs/test_job_${JOB_ID}.out"
+JOB_OUTPUT="${SLURM_JOB_SPOOL}/test_job_${JOB_ID}.out"
 if [ -f "$JOB_OUTPUT" ]; then
     echo "Job output:"
     cat "$JOB_OUTPUT"
     echo
-    
+
     if grep -q "PRETTY_NAME" "$JOB_OUTPUT"; then
         echo "✓ Job produced expected output (found PRETTY_NAME)"
     else
