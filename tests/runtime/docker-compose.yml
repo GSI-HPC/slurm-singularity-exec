@@ -1,0 +1,71 @@
+# Docker Compose configuration for runtime testing
+# Sets up a minimal Slurm cluster with controller and compute node
+
+# Common configuration using YAML anchors
+x-common-build: &common-build
+  context: .
+  dockerfile: Dockerfile
+  args:
+    UBUNTU_VERSION: ${UBUNTU_VERSION:-25.04}
+
+services:
+  # Plugin builder service - builds the plugin once before starting Slurm services
+  plugin-builder:
+    image: runtime-slurmctld:latest
+    build: *common-build
+    volumes:
+      - ../..:/workspace:z
+      - plugin-build:/var/lib/slurm-plugin-build
+    entrypoint: /workspace/tests/runtime/entrypoint-plugin-builder.sh
+
+  # Slurm controller
+  slurmctld:
+    image: runtime-slurmctld:latest
+    build: *common-build
+    depends_on:
+      plugin-builder:
+        condition: service_completed_successfully
+    volumes:
+      - ../..:/workspace:z
+      - plugin-build:/var/lib/slurm-plugin-build
+      - slurmctld-state:/var/spool/slurmctld
+      - munge-key:/etc/munge
+      - job-spool:/var/spool/slurm-jobs
+    networks:
+      - slurm-net
+    hostname: slurmctld
+    container_name: slurmctld
+    entrypoint: /workspace/tests/runtime/entrypoint-slurmctld.sh
+
+  # Slurm compute node
+  slurmd:
+    image: runtime-slurmd:latest
+    build: *common-build
+    depends_on:
+      plugin-builder:
+        condition: service_completed_successfully
+      slurmctld:
+        condition: service_started
+    volumes:
+      - ../..:/workspace:z
+      - plugin-build:/var/lib/slurm-plugin-build
+      - slurmd-state:/var/spool/slurmd
+      - munge-key:/etc/munge
+      - job-spool:/var/spool/slurm-jobs
+    privileged: true
+    networks:
+      - slurm-net
+    hostname: slurmd
+    container_name: slurmd
+    entrypoint: /workspace/tests/runtime/entrypoint-slurmd.sh
+
+networks:
+  slurm-net:
+    driver: bridge
+
+volumes:
+  slurmctld-state:
+  slurmd-state:
+  munge-key:
+  job-spool:
+  plugin-build:
