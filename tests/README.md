@@ -46,11 +46,26 @@ bats test_wrapper.bats
 - Error handling (missing files, invalid paths, special characters)
 - Command construction (argument ordering, bind mount syntax, environment propagation)
 
+## Runtime Integration Tests
+
+Runtime tests verify the plugin works with actual Slurm daemons:
+
+```bash
+cd tests/runtime
+./run-tests.sh
+```
+
+See [runtime/README.md](runtime/README.md) for detailed documentation on the Docker Compose architecture, test flow, and troubleshooting.
+
 ## Continuous Integration
 
-GitHub Actions tests on every push/PR with:
-- Slurm 23.11 (Ubuntu 24.04 Noble)
-- Slurm 24.11 (Ubuntu 25.04 Plucky)
+GitHub Actions runs tests on every push/PR:
+
+| Test Type | Slurm Version | Ubuntu Version | Description |
+|-----------|---------------|----------------|-------------|
+| Build | 23.11 | 24.04 Noble | Compile-time compatibility check |
+| Build | 24.11 | 25.04 Plucky | Compile-time compatibility check |
+| Runtime | 24.11 | 25.04 Plucky | Full integration tests with live cluster |
 
 ## Writing Tests
 
