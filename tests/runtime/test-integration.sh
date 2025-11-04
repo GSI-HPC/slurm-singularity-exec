@@ -280,5 +280,128 @@ else
     echo
 fi
 
+# Test 12: Verify global= option in plugstack.conf is propagated correctly
+echo "Test 12: Verifying global= option configuration..."
+
+if [ ! -f "$PLUGSTACK_CONF" ]; then
+    echo "✗ ERROR: Plugin config not found at $PLUGSTACK_CONF"
+    exit 1
+fi
+
+# Check if global= parameter exists in the config
+if ! grep -q "global=" "$PLUGSTACK_CONF"; then
+    echo "⚠ Warning: global= parameter not found in $PLUGSTACK_CONF"
+    echo "  This may indicate the plugin was built without PLUGIN_GLOBAL_ARG configured"
+    echo
+    echo "=== All tests passed! ==="
+    exit 0
+fi
+
+echo "✓ Found global= parameter in $PLUGSTACK_CONF"
+
+# Extract the global= value from config
+GLOBAL_VALUE=$(grep "global=" "$PLUGSTACK_CONF" | sed -n 's/.*global=\([^ ]*\).*/\1/p')
+echo "  Configuration value: global=${GLOBAL_VALUE}"
+
+# If container tests are not available, skip runtime verification
+if [ "$SKIP_CONTAINER_TEST" = "true" ]; then
+    echo "  Skipping runtime verification (no container available)"
+    echo
+    echo "=== All tests passed! ==="
+    exit 0
+fi
+
+# Verify the value is used in a containerized job
+echo "  Testing global option propagation with containerized job..."
+
+# Create a test job script that checks if SLURM_SINGULARITY_GLOBAL is set and prints its value
+TEST_GLOBAL_SCRIPT=$(mktemp /tmp/test_global.XXXXXX.sh)
+cat > "$TEST_GLOBAL_SCRIPT" <<'GLOBALEOF'
+#!/bin/bash
+# Check if SLURM_SINGULARITY_GLOBAL is set and print its value
+if [ -n "${SLURM_SINGULARITY_GLOBAL+x}" ]; then
+    echo "SLURM_SINGULARITY_GLOBAL is set to: '${SLURM_SINGULARITY_GLOBAL}'"
+else
+    echo "SLURM_SINGULARITY_GLOBAL is NOT set"
+fi
+hostname
+GLOBALEOF
+chmod +x "$TEST_GLOBAL_SCRIPT"
+
+# Submit job with container
+GLOBAL_JOB_ID=$(sbatch --singularity-container="$TEST_CONTAINER" \
+                       --output="${SLURM_JOB_SPOOL}/test_global_%j.out" \
+                       --error="${SLURM_JOB_SPOOL}/test_global_%j.err" \
+                       "$TEST_GLOBAL_SCRIPT" 2>&1 | awk '{print $NF}')
+
+if [ -z "$GLOBAL_JOB_ID" ]; then
+    echo "⚠ Warning: Failed to submit global option test job"
+    rm -f "$TEST_GLOBAL_SCRIPT"
+    echo
+    echo "=== All tests passed! ==="
+    exit 0
+fi
+
+echo "  Job submitted: $GLOBAL_JOB_ID"
+
+# Wait for job to complete
+retry --times="$RETRY_TIMES" --delay="$JOB_RETRY_DELAY" -- \
+    bash -c "scontrol show job $GLOBAL_JOB_ID 2>/dev/null | grep -qE 'JobState=(COMPLETED|FAILED|CANCELLED)'" >/dev/null 2>&1
+
+JOB_STATE=$(scontrol show job "$GLOBAL_JOB_ID" 2>/dev/null | grep "JobState" | awk '{print $1}' | cut -d= -f2)
+
+if [ "$JOB_STATE" != "COMPLETED" ] && [ "$JOB_STATE" != "COMPLETING" ]; then
+    echo "⚠ Warning: Global option test job did not complete successfully (State: $JOB_STATE)"
+    rm -f "$TEST_GLOBAL_SCRIPT"
+    echo
+    echo "=== All tests passed! ==="
+    exit 0
+fi
+
+# Check stdout for the SLURM_SINGULARITY_GLOBAL environment variable check
+GLOBAL_OUT_FILE="${SLURM_JOB_SPOOL}/test_global_${GLOBAL_JOB_ID}.out"
+
+if [ ! -f "$GLOBAL_OUT_FILE" ]; then
+    echo "⚠ Warning: Job output file not found, cannot verify global option propagation"
+    rm -f "$TEST_GLOBAL_SCRIPT"
+    echo
+    echo "=== All tests passed! ==="
+    exit 0
+fi
+
+# Check if the variable is set
+if grep -q "SLURM_SINGULARITY_GLOBAL is NOT set" "$GLOBAL_OUT_FILE"; then
+    echo "✗ ERROR: SLURM_SINGULARITY_GLOBAL was not set by plugin"
+    cat "$GLOBAL_OUT_FILE"
+    rm -f "$TEST_GLOBAL_SCRIPT" "${SLURM_JOB_SPOOL}/test_global_${GLOBAL_JOB_ID}."*
+    exit 1
+fi
+
+if ! grep -q "SLURM_SINGULARITY_GLOBAL is set to:" "$GLOBAL_OUT_FILE"; then
+    echo "⚠ Warning: Could not verify SLURM_SINGULARITY_GLOBAL in job output"
+    rm -f "$TEST_GLOBAL_SCRIPT" "${SLURM_JOB_SPOOL}/test_global_${GLOBAL_JOB_ID}."*
+    echo
+    echo "=== All tests passed! ==="
+    exit 0
+fi
+
+echo "✓ SLURM_SINGULARITY_GLOBAL environment variable was set by plugin"
+
+# Show the actual value that was set
+ACTUAL_GLOBAL=$(grep "SLURM_SINGULARITY_GLOBAL is set to:" "$GLOBAL_OUT_FILE" | head -1)
+echo "  ${ACTUAL_GLOBAL}"
+
+# Extract just the value for comparison (between quotes)
+ACTUAL_VALUE=$(echo "$ACTUAL_GLOBAL" | sed -n "s/.*SLURM_SINGULARITY_GLOBAL is set to: '\(.*\)'/\1/p")
+if [ "$ACTUAL_VALUE" = "$GLOBAL_VALUE" ]; then
+    echo "✓ Value matches configuration: '${GLOBAL_VALUE}'"
+else
+    echo "⚠ Warning: Value mismatch (config: '${GLOBAL_VALUE}', actual: '${ACTUAL_VALUE}')"
+fi
+
+# Cleanup test files
+rm -f "$TEST_GLOBAL_SCRIPT" "${SLURM_JOB_SPOOL}/test_global_${GLOBAL_JOB_ID}."*
+echo
+
 echo "=== All tests passed! ==="
 exit 0

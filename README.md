@@ -49,6 +49,7 @@ CMake option                     | Default                                      
 `-DSLURM_PLUGSTACK_CONF_D=...`   | `${SLURM_SYSCONFDIR}/plugstack.conf.d`                | Slurm plugstack conf dir
 `-DPLUGIN_DEFAULT_ARG=...`       | `""`                                                  | Plugin default= arg
 `-DPLUGIN_BIND_ARG=...`          | `${SLURM_SYSCONFDIR},/var/spool/slurm,/var/run/munge` | Plugin bind= arg
+`-DPLUGIN_GLOBAL_ARG=...`        | `""`                                                  | Plugin global= arg
 `-DPLUGIN_EXTRA_ARGS=...`        | `""`                                                  | Plugin args= arg
 `-DSLURM_INCLUDE_DIR=...`        | Detected by CMake, typically `/usr/include`           | Slurm include dir passed to compiler via `-I` so `#include <slurm/spank.h>` resolves
 `-DCMAKE_INSTALL_LIBEXECDIR=...` | `libexec` on RHEL-based systems                       | FHS "internal binaries" directory [^sSrfT]
@@ -82,7 +83,7 @@ include /etc/slurm/plugstack.conf.d/*.conf'
 EOF
 # reference the path to the plug-in and the wrapper script
 cat > /etc/slurm/plugstack.conf.d/singularity-exec.conf <<EOF
-required /usr/lib64/slurm/singularity-exec.so default= script=/usr/libexec/slurm-singularity-wrapper.sh bind= args=disabled
+required /usr/lib64/slurm/singularity-exec.so default= script=/usr/libexec/slurm-singularity-wrapper.sh bind= global= args=disabled
 EOF
 ```
 
@@ -95,6 +96,7 @@ Option                 | Description
 `default=<path>`       | Path to the Singularity container launched by default. If this is set user require to explicitly use an empty `--singularity-container=` option to prevent the start of a container.
 `script=<path>`        | Path to the wrapper script which consumes the input arguments and environment variables set by the plugin to launch the Singularity container.
 `bind=<spec>`          | List of paths to bind-mount into the container by default. Please reference the section about [User-defined bind paths][95] in the Singularity User Documentation [^E9F6O].
+`global=<options>`     | List of [global command-line options][93] passed to the `singularity` command itself (e.g., `--silent`, `--quiet`). Equivalent to using the environment variable `SLURM_SINGULARITY_GLOBAL`.
 `args=<string>`        | List of [command-line arguments][94] passed to `singularity exec`. Disable support for this feature by setting `args=disabled`. This will prompt an error for an unrecognized option if the user adds the `--singularity-args=` option. Use an empty string `args=""` to enable support for singularity arguments without a default configuration. Supply default for all users by adding a list of options i.e. `args="--home /network/$USER"`
 
 Passing `-DINSTALL_PLUGSTACK_CONF=ON` to the CMake configure command will automate the above configuration.

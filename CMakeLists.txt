@@ -17,6 +17,7 @@ set(SLURM_PLUGSTACK_CONF_D ${SLURM_SYSCONFDIR}/plugstack.conf.d
 set(PLUGIN_DEFAULT_ARG "" CACHE STRING "Plugin default= arg")
 set(PLUGIN_BIND_ARG ${SLURM_SYSCONFDIR},/var/spool/slurm,/var/run/munge
   CACHE STRING "Plugin bind= arg")
+set(PLUGIN_GLOBAL_ARG "" CACHE STRING "Plugin global= arg")
 set(PLUGIN_EXTRA_ARGS "" CACHE STRING "Plugin args= arg")
 
 find_path(SLURM_INCLUDE_DIR
