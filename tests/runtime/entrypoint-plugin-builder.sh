@@ -12,7 +12,8 @@ cmake -GNinja -S "$SRC_DIR" -B "$BUILD_DIR" \
     -DCMAKE_INSTALL_PREFIX=/usr \
     -DSLURM_SYSCONFDIR=/etc/slurm \
     -DINSTALL_PLUGSTACK_CONF=ON \
-    -DPLUGIN_BIND_ARG="/etc/slurm,/var/spool/slurm,/var/spool/slurmd,/var/run/munge"
+    -DPLUGIN_BIND_ARG="/etc/slurm,/var/spool/slurm,/var/spool/slurmd,/var/run/munge" \
+    -DPLUGIN_GLOBAL_ARG="--silent"
 
 cmake --build "$BUILD_DIR"
 
