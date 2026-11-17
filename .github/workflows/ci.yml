@@ -1,0 +1,163 @@
+name: CI
+
+# Lint and unit tests, the sind node image, and the end-to-end tests on sind
+# clusters with Slurm 26.11.
+
+on:
+  push:
+    branches: [runtime-apptainer]
+  pull_request:
+    branches: [runtime-apptainer]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  IMAGE: ghcr.io/gsi-hpc/slurm-runtime-apptainer/sind-node
+
+jobs:
+  check:
+    name: lint and unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: jdx/mise-action@236a21c3b91f5db6d4e174b348674a0f0caac06d # v5.2.9
+
+      - name: Lint and unit tests
+        run: mise run check
+
+      - name: Unit tests with sanitizers
+        run: mise run test:sanitize
+
+  # The node image has a tag for each content of image/, so only a change
+  # there builds it (about 15 minutes). A pull request from a fork cannot
+  # push the image: its change to image/ must first come to a branch of this
+  # repository.
+  image:
+    name: node image
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.tag.outputs.image }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Image tag of this commit
+        id: tag
+        env:
+          HASH: ${{ hashFiles('image/**') }}
+        run: echo "image=$IMAGE:26.11-${HASH:0:12}" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Look for the image in the registry
+        id: registry
+        env:
+          TAGGED: ${{ steps.tag.outputs.image }}
+        run: |
+          if docker buildx imagetools inspect "$TAGGED" >/dev/null 2>&1; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        if: steps.registry.outputs.found == 'false'
+
+      - name: Build and push the image
+        if: steps.registry.outputs.found == 'false'
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: image
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.tag.outputs.image }}
+          cache-from: type=gha,scope=node-image
+          cache-to: type=gha,mode=max,scope=node-image
+
+      # The tag 26.11 follows the branch. mise.toml uses it by default.
+      - name: Tag the image as 26.11
+        if: github.event_name == 'push' && github.ref == 'refs/heads/runtime-apptainer'
+        env:
+          TAGGED: ${{ steps.tag.outputs.image }}
+        run: docker buildx imagetools create --tag "$IMAGE:26.11" "$TAGGED"
+
+  e2e:
+    name: e2e (DefRuntimePlugin ${{ matrix.runtime }})
+    needs: image
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: read
+    strategy:
+      fail-fast: false
+      matrix:
+        # oci is the default of Slurm: the user selects the plugin for each
+        # job. With apptainer, the plugin is the default runtime.
+        runtime: [oci, apptainer]
+    env:
+      NODE_IMAGE: ${{ needs.image.outputs.image }}
+      E2E_DEFAULT_RUNTIME: ${{ matrix.runtime }}
+      SIND_PROGRESS: plain
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: jdx/mise-action@236a21c3b91f5db6d4e174b348674a0f0caac06d # v5.2.9
+
+      # sind needs more inotify instances than the runner permits. Apptainer
+      # without the setuid starter needs user namespaces for a process
+      # without privileges, which AppArmor on Ubuntu restricts.
+      - name: Prepare the host
+        run: |
+          sudo sysctl -w fs.inotify.max_user_instances=8192
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          sind doctor
+
+      - name: Log in to GHCR
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull the node image
+        run: docker pull --quiet "$NODE_IMAGE"
+
+      - name: End-to-end tests
+        run: mise run e2e
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: failure()
+        with:
+          name: e2e-logs-${{ matrix.runtime }}
+          path: |
+            .e2e/logs
+            .e2e/cluster.yaml
+          include-hidden-files: true
+          if-no-files-found: ignore
+
+      - name: Summary of the failure
+        if: failure()
+        run: tests/e2e/run.sh summary
