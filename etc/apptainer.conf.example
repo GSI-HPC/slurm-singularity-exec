@@ -1,0 +1,33 @@
+# apptainer.conf - configuration of the Slurm runtime/apptainer plugin.
+#
+# slurmstepd reads this file on each compute node, from the directory of
+# slurm.conf. The file is optional. Each line shows the default value.
+#
+# The file has the syntax of slurm.conf: put a value with a space in double
+# quotes. In GlobalArgs and ExecArgs, single quotes keep a space in one
+# argument:
+#
+#   ExecArgs="--nv --env 'SITE=GSI Darmstadt'"
+
+# Apptainer program. A name without a directory is searched in the PATH of
+# the job, then in /usr/local/bin:/usr/bin:/bin. SingularityCE has the same
+# command line: set Executable=singularity to use it.
+#Executable=apptainer
+
+# Image for steps that do not name one. Without it, such steps run without
+# a container. Users select no container with --container=none.
+#DefaultImage=
+
+# Bind paths for each container, comma-separated, in the format of
+# "apptainer exec --bind". Users add paths with --apptainer-bind and leave
+# these paths out with --apptainer-no-default-binds.
+#Bind=
+
+# Arguments for "apptainer" itself, before "exec".
+#GlobalArgs=
+
+# Arguments for "apptainer exec", before the arguments of the user.
+#ExecArgs=
+
+# Permit users to add arguments to "apptainer exec" with --apptainer-args.
+#AllowUserArgs=yes

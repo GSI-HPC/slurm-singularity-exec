@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+option(
+  'slurm_source',
+  type: 'string',
+  value: '',
+  description: 'Configured Slurm source tree of the release that loads the plugin',
+)
+option(
+  'plugin',
+  type: 'feature',
+  value: 'auto',
+  description: 'Build the plugin (auto: only when slurm_source is set)',
+)
+option(
+  'plugindir',
+  type: 'string',
+  value: '',
+  description: 'Slurm plugin directory, PluginDir in slurm.conf (default: <libdir>/slurm)',
+)
