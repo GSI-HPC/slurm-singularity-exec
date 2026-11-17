@@ -1,0 +1,67 @@
+name: Spike native OCI
+
+# Compares the SPANK plugin with the native Slurm --container option
+# (oci.conf) when both use Apptainer, on sind clusters.
+
+on:
+  push:
+    branches: [ claude/project-thread-ixa8rd ]
+    paths: [ spike/**, .github/workflows/spike-native-oci.yml ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  spike:
+    name: Slurm ${{ matrix.slurm }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    strategy:
+      fail-fast: false
+      matrix:
+        slurm: [ "25.11", "26.05" ]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare host
+        run: |
+          sudo sysctl -w fs.inotify.max_user_instances=8192
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_unconfined=0 || true
+          sudo sysctl -w kernel.unprivileged_userns_clone=1 || true
+          ls -l /dev/fuse
+          docker version --format '{{.Server.Version}}'
+
+      - name: Install sind
+        run: |
+          curl -fsSL -o sind https://github.com/GSI-HPC/sind/releases/latest/download/sind-linux-amd64
+          sudo install -m 755 sind /usr/local/bin/sind
+          rm sind
+          sind version || true
+          sind doctor
+
+      - name: Run spike
+        env:
+          SIND_IMAGE: ghcr.io/gsi-hpc/sind-node:${{ matrix.slurm }}
+          SIND_PROGRESS: plain
+        run: ./spike/run.sh
+
+      - name: Summary
+        if: always()
+        run: cat spike/out/results.md >> "$GITHUB_STEP_SUMMARY" || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: spike-slurm-${{ matrix.slurm }}
+          path: |
+            spike/out/*.md
+            spike/out/*.txt
+            spike/out/*.yaml
+
+      - name: Clean up
+        if: always()
+        run: sind delete cluster --all || true
