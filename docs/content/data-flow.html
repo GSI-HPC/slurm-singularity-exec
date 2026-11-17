@@ -1,0 +1,69 @@
+<!--
+title: Data flow
+description: How the options go from the command line to apptainer exec on the compute node.
+-->
+<p class="lead">The plugin runs in two places: in the commands on the submit host, and in slurmstepd on the compute node. This page shows how the options go from one to the other.</p>
+
+<figure class="diagram">
+  <svg viewBox="0 0 720 400" role="img" aria-label="The options go from the command to slurmstepd in the job request and in the job environment">
+    <rect class="d-box" x="10" y="20" width="250" height="150" rx="6"/>
+    <text class="d-label" x="26" y="46">srun, sbatch, salloc</text>
+    <text class="d-note" x="26" y="66">plugin, command side</text>
+    <text class="d-code" x="26" y="96">--container=IMAGE</text>
+    <text class="d-code" x="26" y="116">--apptainer-bind=SPEC</text>
+    <text class="d-code" x="26" y="136">--apptainer-args=ARGS</text>
+    <text class="d-code" x="26" y="156">--apptainer-no-default-binds</text>
+
+    <path class="d-line d-accent-line" d="M260 70 H 452"/><path class="d-head d-accent-line" d="M444 64 L454 70 L444 76"/>
+    <text class="d-label" x="356" y="58" text-anchor="middle">container field</text>
+    <text class="d-note" x="356" y="90" text-anchor="middle">job and step request</text>
+
+    <path class="d-line" d="M260 136 H 452"/><path class="d-head" d="M444 130 L454 136 L444 142"/>
+    <text class="d-label" x="356" y="124" text-anchor="middle">SLURM_APPTAINER_*</text>
+    <text class="d-note" x="356" y="156" text-anchor="middle">environment of the job</text>
+
+    <rect class="d-box" x="454" y="20" width="256" height="150" rx="6"/>
+    <text class="d-label" x="470" y="46">slurmstepd</text>
+    <text class="d-note" x="470" y="66">plugin, node side</text>
+    <text class="d-code" x="470" y="96">step-&gt;container-&gt;bundle</text>
+    <text class="d-code" x="470" y="136">step-&gt;env</text>
+
+    <rect class="d-box d-soft" x="454" y="210" width="256" height="60" rx="6"/>
+    <text class="d-label" x="470" y="236">apptainer.conf</text>
+    <text class="d-note" x="470" y="256">defaults of the site</text>
+    <path class="d-line" d="M582 210 V 172"/><path class="d-head" d="M576 180 L582 170 L588 180"/>
+
+    <rect class="d-box d-accent" x="10" y="310" width="700" height="70" rx="6"/>
+    <text class="d-code" x="26" y="340">apptainer [GlobalArgs] exec [ExecArgs] [--bind Bind] [--bind SPEC] [ARGS] IMAGE COMMAND</text>
+    <text class="d-note" x="26" y="362">execve() in the process of the task, with the environment of the job</text>
+    <path class="d-line" d="M500 170 V 196 H 360 V 308"/><path class="d-head" d="M354 300 L360 310 L366 300"/>
+  </svg>
+  <figcaption>The image goes in the request. The other options go in the environment of the job.</figcaption>
+</figure>
+
+<h2 id="image">The image: a field of the request</h2>
+<p>Slurm has a <code>container</code> field in the job request and in the step request. The plugin writes the image there. Slurm then handles it like its own data:</p>
+<ul>
+  <li>slurmctld stores it in the job record. <code>scontrol show job</code> shows it.</li>
+  <li>slurmstepd gets it with the step, without a variable that a script can change.</li>
+</ul>
+
+<h2 id="variables">The other options: variables of the job</h2>
+<p>The request has no fields for bind paths and arguments. The plugin writes them into the environment that the job gets, as <code>SLURM_APPTAINER_BIND</code>, <code>SLURM_APPTAINER_ARGS</code> and <code>SLURM_APPTAINER_NO_DEFAULT_BINDS</code>. On the node, the plugin reads them from the environment of the step.</p>
+<p>This has two effects:</p>
+<ul>
+  <li><strong>The steps of a job get the options of the job.</strong> <code>srun</code> in a job finds the variables and uses them as defaults, as it does with <code>SLURM_NTASKS</code>.</li>
+  <li><strong>The values are data of the user.</strong> A job script can change them. This is by design: the plugin starts Apptainer as the user, with the rights of the user.</li>
+</ul>
+
+<h2 id="no-shell">No shell</h2>
+<p>The plugin builds the argument list in C and calls <code>execve()</code>. It splits <code>ExecArgs</code>, <code>GlobalArgs</code> and <code>--apptainer-args</code> into words with the quoting rules of a shell, but it does not expand variables, patterns or commands. The command of the task and the environment go to Apptainer without change.</p>
+
+<h2 id="code">The code</h2>
+<table>
+  <thead><tr><th>File</th><th>Function</th></tr></thead>
+  <tbody>
+    <tr><td><code>src/command.c</code></td><td>Builds the argument list of Apptainer. It has no Slurm dependency, and unit tests cover it.</td></tr>
+    <tr><td><code>src/runtime_apptainer.c</code></td><td>The plugin: the options in the commands, the configuration, and the exec in slurmstepd.</td></tr>
+  </tbody>
+</table>

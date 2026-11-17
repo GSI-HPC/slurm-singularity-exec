@@ -1,0 +1,58 @@
+<!--
+title: Options
+description: The four options that the plugin adds to srun, sbatch and salloc, and their variables.
+-->
+<p class="lead">The plugin adds four options to <code>srun</code>, <code>sbatch</code> and <code>salloc</code>. Each option has an input variable for each command.</p>
+
+<table>
+  <thead><tr><th>Option</th><th>Variable in a job</th><th>Function</th></tr></thead>
+  <tbody>
+    <tr><td><code>--container=IMAGE</code></td><td><code>SLURM_CONTAINER</code></td><td>Run the tasks in this image. <code>none</code> selects no container.</td></tr>
+    <tr><td><code>--apptainer-bind=SPEC,...</code></td><td><code>SLURM_APPTAINER_BIND</code></td><td>Add bind paths, in the format of <code>apptainer exec --bind</code>.</td></tr>
+    <tr><td><code>--apptainer-args=ARGS</code></td><td><code>SLURM_APPTAINER_ARGS</code></td><td>Add arguments to <code>apptainer exec</code>.</td></tr>
+    <tr><td><code>--apptainer-no-default-binds</code></td><td><code>SLURM_APPTAINER_NO_DEFAULT_BINDS</code></td><td>Leave out the bind paths of the site.</td></tr>
+  </tbody>
+</table>
+
+<aside class="note">
+  <p>Write each option with an equals sign: <code>--container=IMAGE</code>. Slurm does not accept <code>--container IMAGE</code> for an option of a runtime plugin.</p>
+</aside>
+
+<h2 id="container">--container</h2>
+<p>The image is a value that <code>apptainer exec</code> accepts: a SIF file, a sandbox directory, or a URI such as <code>docker://almalinux:9</code>. A path must be valid on the compute nodes.</p>
+<pre data-lang="console">$ srun --container=/images/alma9.sif hostname
+$ srun --container=docker://almalinux:9 hostname</pre>
+<p>With a URI, Apptainer gets and converts the image on each node before the task starts. A SIF file on a shared file system starts faster.</p>
+<p><code>--container=none</code> starts the tasks without a container. Use it when the job or the site sets an image and one step must run on the host.</p>
+
+<h2 id="input-variables">Input variables</h2>
+<p>Each command reads the options from variables, as it does for its other options. An option on the command line replaces the variable.</p>
+<table>
+  <thead><tr><th>Option</th><th>Input variable of srun, sbatch and salloc</th></tr></thead>
+  <tbody>
+    <tr><td><code>--container</code></td><td><code>SRUN_CONTAINER</code><br><code>SBATCH_CONTAINER</code><br><code>SALLOC_CONTAINER</code></td></tr>
+    <tr><td><code>--apptainer-bind</code></td><td><code>SRUN_APPTAINER_BIND</code><br><code>SBATCH_APPTAINER_BIND</code><br><code>SALLOC_APPTAINER_BIND</code></td></tr>
+    <tr><td><code>--apptainer-args</code></td><td><code>SRUN_APPTAINER_ARGS</code><br><code>SBATCH_APPTAINER_ARGS</code><br><code>SALLOC_APPTAINER_ARGS</code></td></tr>
+    <tr><td><code>--apptainer-no-default-binds</code></td><td><code>SRUN_APPTAINER_NO_DEFAULT_BINDS</code><br><code>SBATCH_APPTAINER_NO_DEFAULT_BINDS</code><br><code>SALLOC_APPTAINER_NO_DEFAULT_BINDS</code></td></tr>
+  </tbody>
+</table>
+<pre data-lang="console">$ export SBATCH_CONTAINER=/images/alma9.sif
+$ sbatch job.sh</pre>
+
+<h2 id="job-variables">Variables in a job</h2>
+<p>A job that uses the plugin has the <code>SLURM_*</code> variables of the first table in its environment. <code>srun</code> reads them, thus the steps of a job use the options of the job. See <a href="steps.html">Steps of a job</a>.</p>
+<pre data-lang="console">$ sbatch --container=/images/alma9.sif --wrap 'echo $SLURM_CONTAINER'
+$ cat slurm-4712.out
+/images/alma9.sif</pre>
+
+<h2 id="errors">Errors</h2>
+<table>
+  <thead><tr><th>Message</th><th>Cause</th></tr></thead>
+  <tbody>
+    <tr><td><code>--container requires a value</code></td><td>The option has no image. Write <code>--container=IMAGE</code>.</td></tr>
+    <tr><td><code>--apptainer-no-default-binds requires yes or no</code></td><td>The value is not <code>yes</code> or <code>no</code>.</td></tr>
+    <tr><td><code>--apptainer-bind is not an option of runtime/oci</code></td><td>A different runtime is selected. See <a href="select-runtime.html">Select the runtime</a>.</td></tr>
+    <tr><td><code>--apptainer-args is not permitted on this cluster</code></td><td>The site set <code>AllowUserArgs=no</code>.</td></tr>
+    <tr><td><code>FATAL: could not open image</code></td><td>Apptainer does not find the image on the compute node. The task exits with status 255.</td></tr>
+  </tbody>
+</table>

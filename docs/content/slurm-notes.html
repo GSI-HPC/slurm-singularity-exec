@@ -1,0 +1,46 @@
+<!--
+title: Slurm 26.11 notes
+description: Properties and limits of the runtime plugin interface of Slurm 26.11 that an administrator must know.
+-->
+<p class="lead">The runtime plugin interface is new in Slurm 26.11. This page lists its properties and limits that have an effect on the operation of the plugin.</p>
+
+<h2 id="version">The plugin is for one Slurm version</h2>
+<p>The runtime interface is internal to Slurm. It is not a stable interface as SPANK is. Slurm loads a plugin of this type only if the plugin has the version of Slurm itself, the patch level included.</p>
+<ul>
+  <li>Build the plugin against the configured source tree of the Slurm version that you install.</li>
+  <li>Build it again for each Slurm update, also for a patch release such as 26.11.1.</li>
+  <li>The functions of the interface can change in a later release of Slurm. Then the plugin needs a change of its source.</li>
+</ul>
+<aside class="warn"><p>At the time of this release of the plugin, Slurm 26.11 is a release candidate. The tests use the commit <code>85de8ed</code> of the <code>slurm-26.11</code> branch, which reports the version <code>26.11.0-0rc2</code>.</p></aside>
+
+<h2 id="hosts">Where Slurm loads the plugin</h2>
+<table>
+  <thead><tr><th>Program</th><th>Loads the plugin</th><th>Function of the plugin</th></tr></thead>
+  <tbody>
+    <tr><td><code>srun</code>, <code>sbatch</code>, <code>salloc</code></td><td>Yes</td><td>Options, input variables, variables of the job</td></tr>
+    <tr><td><code>slurmstepd</code></td><td>Yes</td><td>Start of Apptainer for each task</td></tr>
+    <tr><td><code>slurmctld</code>, <code>slurmd</code>, <code>slurmdbd</code></td><td>No</td><td></td></tr>
+  </tbody>
+</table>
+<p>Thus install the plugin and <code>apptainer.conf</code> on the submit hosts and on the compute nodes. The controller does not need them.</p>
+
+<h2 id="default">Make the plugin the default runtime</h2>
+<p>Slurm reads the options of a command before it knows the runtime that <code>--runtime</code> selects. If the plugin is not the default runtime, this has effects that can surprise a user:</p>
+<ul>
+  <li><code>srun --container=IMAGE --runtime=apptainer</code> starts the task <strong>on the host</strong>. <code>--runtime</code> must be before <code>--container</code>.</li>
+  <li><code>sbatch</code> and <code>salloc</code> refuse the <code>--apptainer-*</code> options after <code>--runtime=apptainer</code>.</li>
+</ul>
+<p>With <code>DefRuntimePlugin=runtime/apptainer</code> in <code>slurm.conf</code>, these effects do not occur. See <a href="select-runtime.html">Select the runtime</a> for the details and for the alternatives.</p>
+
+<h2 id="one-runtime">One runtime for each step</h2>
+<p>A step has one runtime plugin. If <code>runtime/apptainer</code> is the default, <code>--container</code> names an Apptainer image, not an OCI bundle. A user who wants the OCI runtime of Slurm selects it with <code>--runtime=oci</code>.</p>
+
+<h2 id="trust">Trust</h2>
+<ul>
+  <li>The plugin starts Apptainer as the user of the job, after slurmstepd dropped its privileges. A user gets no rights from the plugin that the user does not have in a job without a container.</li>
+  <li>The options of a job are data of the user. <code>AllowUserArgs=no</code> is a policy for the options of Slurm. It is not a security boundary: a user can start <code>apptainer</code> in a job directly. To restrict what containers can do, use the configuration of Apptainer itself.</li>
+  <li><code>apptainer.conf</code> has the trust of <code>slurm.conf</code>. Only root must be able to write it.</li>
+</ul>
+
+<h2 id="not-tested">Not tested</h2>
+<p>The end-to-end tests do not cover heterogeneous jobs, <code>scrontab</code>, <code>slurmrestd</code>, and architectures other than x86-64.</p>

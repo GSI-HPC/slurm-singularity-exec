@@ -1,0 +1,57 @@
+<!--
+title: Install
+description: Build the plugin against your Slurm release and install it on the submit hosts and the compute nodes.
+-->
+<p class="lead">Build the plugin against your Slurm release. Then install it on each host that runs a Slurm command or starts tasks.</p>
+
+<h2 id="requirements">Requirements</h2>
+<ul>
+  <li>Slurm 26.11 or later. Earlier releases do not have the runtime plugin interface.</li>
+  <li>The configured source tree of that Slurm release. It is the directory where <code>./configure</code> ran. The plugin includes internal headers of Slurm, which the Slurm packages do not install.</li>
+  <li>A C compiler, <a href="https://mesonbuild.com">meson</a> 1.1 or later, and ninja.</li>
+  <li><a href="https://apptainer.org">Apptainer</a> on the compute nodes. SingularityCE is also possible, see <a href="configuration.html#executable">Executable</a>.</li>
+</ul>
+
+<h2 id="build">Build</h2>
+<pre data-lang="console">$ meson setup build -Dslurm_source=/path/to/slurm --prefix=/usr --libdir=lib64
+$ meson compile -C build
+$ meson install -C build</pre>
+<p><code>meson install</code> writes <code>runtime_apptainer.so</code> into <code>&lt;libdir&gt;/slurm</code>. If the <code>PluginDir</code> of your cluster is a different directory, set it with <code>-Dplugindir=/path/to/plugins</code>.</p>
+
+<aside class="warn">
+  <p><strong>Build the plugin again for each Slurm update.</strong> Slurm loads a plugin only if the plugin was built for the same Slurm version, the patch level included. A plugin for 26.11.0 does not load into 26.11.1.</p>
+</aside>
+
+<h2 id="hosts">Where to install</h2>
+<table>
+  <thead><tr><th>Host</th><th>Why</th></tr></thead>
+  <tbody>
+    <tr><td>Submit hosts</td><td><code>srun</code>, <code>sbatch</code> and <code>salloc</code> load the plugin to get its options.</td></tr>
+    <tr><td>Compute nodes</td><td><code>slurmstepd</code> loads the plugin to start the tasks. <code>srun</code> in a batch script loads it too.</td></tr>
+    <tr><td>Controller</td><td>Not necessary. <code>slurmctld</code> does not load runtime plugins.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="check">Check the installation</h2>
+<p>List the runtime plugins that Slurm finds. Then show the options of the plugin.</p>
+<pre data-lang="console">$ srun --runtime=list
+Runtime plugin types are...
+	apptainer
+	oci
+	none
+$ srun --runtime=apptainer --help
+...
+Options provided by runtime/apptainer:
+      --container=image       Container image, or "none" for no container
+      --apptainer-bind=src[:dest[:opts]],...
+                              Bind paths to add to the container
+      --apptainer-args=args   Arguments to add to "apptainer exec"
+      --apptainer-no-default-binds=yes|no
+                              Leave out the bind paths of the site</pre>
+
+<h2 id="next">Next steps</h2>
+<ul>
+  <li><a href="select-runtime.html">Select the runtime</a> for the cluster or for a job.</li>
+  <li>Set the defaults of your site in <a href="configuration.html">apptainer.conf</a>.</li>
+  <li>Run your <a href="first-job.html">first job</a>.</li>
+</ul>

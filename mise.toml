@@ -67,8 +67,8 @@ description = "Run all linters"
 depends = ["lint:*"]
 
 [tasks.check]
-description = "Run the linters and the unit tests"
-depends = ["lint", "test"]
+description = "Run the linters and the unit tests, and build the documentation"
+depends = ["lint", "test", "docs:build"]
 
 [tasks.image]
 description = "Build the sind node image with Slurm 26.11 and Apptainer (tag: NODE_IMAGE)"
@@ -101,3 +101,11 @@ run = "tests/e2e/run.sh summary"
 [tasks."e2e:down"]
 description = "Delete the sind cluster of the end-to-end tests"
 run = "tests/e2e/run.sh down"
+
+[tasks."docs:build"]
+description = "Build the documentation site into _site and check its links"
+run = "uv run --script docs/build.py"
+
+[tasks."docs:serve"]
+description = "Build the documentation site and serve it on http://localhost:8000"
+run = "uv run --script docs/build.py --serve"

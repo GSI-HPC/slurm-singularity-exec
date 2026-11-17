@@ -1,0 +1,72 @@
+<!--
+title: Tests
+description: Unit tests of the command line builder and end-to-end tests on sind clusters with Slurm 26.11.
+-->
+<p class="lead">The project has unit tests for the command line builder and end-to-end tests on real Slurm clusters. GitHub Actions runs them on each push.</p>
+
+<h2 id="unit">Unit tests</h2>
+<p>The unit tests cover <code>src/command.c</code>: the word splitting, the sequence of the arguments, and the errors. They need only a C compiler. CI runs them a second time with the address and undefined behaviour sanitizers.</p>
+<pre data-lang="console">$ mise run test
+$ mise run test:sanitize</pre>
+
+<h2 id="e2e">End-to-end tests</h2>
+<p>The end-to-end tests submit jobs to a Slurm cluster and examine the results. The cluster is a <a href="https://github.com/GSI-HPC/sind">sind</a> cluster: Slurm in Docker containers, with one controller and two workers.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 720 240" role="img" aria-label="The end-to-end tests run bats on the Docker host against a sind cluster">
+    <rect class="d-box d-soft" x="10" y="10" width="700" height="220" rx="6"/>
+    <text class="d-note" x="26" y="34">Docker host: GitHub Actions runner, or your computer</text>
+    <rect class="d-box" x="26" y="50" width="170" height="160" rx="6"/>
+    <text class="d-label" x="42" y="76">bats</text>
+    <text class="d-note" x="42" y="98">52 tests</text>
+    <text class="d-code" x="42" y="128">sind exec -u alice</text>
+    <text class="d-code" x="42" y="148">srun, sbatch, salloc</text>
+    <path class="d-line" d="M196 130 H 246"/><path class="d-head" d="M238 124 L248 130 L238 136"/>
+    <rect class="d-box" x="248" y="50" width="140" height="160" rx="6"/>
+    <text class="d-label" x="262" y="76">controller</text>
+    <text class="d-note" x="262" y="98">slurmctld</text>
+    <text class="d-note" x="262" y="118">submit commands</text>
+    <rect class="d-box d-accent" x="404" y="50" width="140" height="160" rx="6"/>
+    <text class="d-label" x="418" y="76">worker-0</text>
+    <text class="d-note" x="418" y="98">slurmd</text>
+    <text class="d-note" x="418" y="118">plugin</text>
+    <text class="d-note" x="418" y="138">Apptainer</text>
+    <rect class="d-box d-accent" x="560" y="50" width="134" height="160" rx="6"/>
+    <text class="d-label" x="574" y="76">worker-1</text>
+    <text class="d-note" x="574" y="98">slurmd</text>
+    <text class="d-note" x="574" y="118">plugin</text>
+    <text class="d-note" x="574" y="138">Apptainer</text>
+    <text class="d-note" x="262" y="196">node image: Slurm 26.11 + plugin</text>
+  </svg>
+  <figcaption>The tests run on the Docker host and send commands to the cluster.</figcaption>
+</figure>
+<pre data-lang="console">$ mise run e2e</pre>
+<p>The task builds the node image with the plugin, creates the cluster, builds an Alpine Linux test image, runs the tests, and deletes the cluster.</p>
+
+<h3 id="what">What the tests examine</h3>
+<table>
+  <thead><tr><th>File</th><th>Subject</th></tr></thead>
+  <tbody>
+    <tr><td><code>10-options.bats</code></td><td>The options in <code>--help</code>, and the errors of wrong values.</td></tr>
+    <tr><td><code>20-launch.bats</code></td><td>Tasks in the container, the TaskProlog, the limits, the environment, the exit status, standard input, <code>scancel</code>.</td></tr>
+    <tr><td><code>30-job-options.bats</code></td><td>Bind paths and arguments, from options and from variables.</td></tr>
+    <tr><td><code>40-conf.bats</code></td><td>Each key of <code>apptainer.conf</code>.</td></tr>
+    <tr><td><code>50-batch.bats</code></td><td><code>sbatch</code>: the script in the container, <code>#SBATCH</code> lines, variables.</td></tr>
+    <tr><td><code>60-steps.bats</code></td><td>The steps of a job use the options of the job.</td></tr>
+    <tr><td><code>70-mpi.bats</code></td><td>A PMIx client in a container connects to the PMIx server of the step, on two nodes.</td></tr>
+  </tbody>
+</table>
+
+<h3 id="matrix">Two clusters</h3>
+<p>CI runs all tests on two clusters. They differ in <code>DefRuntimePlugin</code>:</p>
+<ul>
+  <li><code>runtime/apptainer</code>: the plugin is the default runtime, the recommended setup.</li>
+  <li><code>runtime/oci</code>: the default of Slurm. The tests select the plugin with the <code>*_RUNTIME</code> variables and with <code>--runtime</code>.</li>
+</ul>
+
+<h2 id="image">The node image</h2>
+<p>sind has node images for released Slurm versions. For Slurm 26.11, the project builds its own node image: the sind image of Slurm 26.05 with Slurm 26.11, Apptainer, and the headers of the configured Slurm source tree. CI builds it when <code>image/</code> changes and stores it in the GitHub Container Registry.</p>
+<pre data-lang="console">$ docker pull ghcr.io/gsi-hpc/slurm-runtime-apptainer/sind-node:26.11</pre>
+<p>The image is also a build environment for the plugin: it has meson, ninja, a compiler and the headers in <code>/usr/src/slurm</code>.</p>
+
+<h2 id="local">Run on one node without Docker</h2>
+<p>The tests also run on a host that is a Slurm node itself, for example a virtual machine with Slurm 26.11. Set <code>E2E_BACKEND=local</code>. See the comment at the top of <code>tests/e2e/helpers.bash</code>.</p>

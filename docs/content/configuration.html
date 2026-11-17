@@ -1,0 +1,69 @@
+<!--
+title: apptainer.conf
+description: The configuration file of the plugin sets the defaults of the site for each container.
+-->
+<p class="lead"><code>apptainer.conf</code> sets the defaults of the site. The file is optional. Without it, the plugin runs <code>apptainer exec IMAGE COMMAND</code> with the options of the user only.</p>
+
+<h2 id="location">Location and format</h2>
+<p><code>slurmstepd</code> reads the file on each compute node when a step starts, from the directory of <code>slurm.conf</code>. A change applies to the next step. It is not necessary to restart a daemon.</p>
+<p>The file has the syntax of <code>slurm.conf</code>: one <code>Key=Value</code> in each line, keys in any case, comments after <code>#</code>. Put a value with a space in double quotes.</p>
+<pre data-lang="conf" data-title="/etc/slurm/apptainer.conf">Bind=/etc/slurm,/run/munge,/var/spool/slurmd,/lustre,/cvmfs
+ExecArgs="--no-mount tmp --env 'SITE=GSI Darmstadt'"
+AllowUserArgs=yes</pre>
+
+<aside class="warn">
+  <p><strong>A key that the plugin does not know stops each step.</strong> The plugin does not start a task with a configuration that it cannot read completely. The log of slurmd shows the line that has the error.</p>
+</aside>
+
+<aside class="note">
+  <p>A node in configless mode gets only the files that slurmctld sends. Install <code>apptainer.conf</code> on such a node in the directory of the default <code>slurm.conf</code>, usually <code>/etc/slurm</code>.</p>
+</aside>
+
+<h2 id="keys">Keys</h2>
+<table>
+  <thead><tr><th>Key</th><th>Default</th><th>Function</th></tr></thead>
+  <tbody>
+    <tr><td><a href="#executable"><code>Executable</code></a></td><td><code>apptainer</code></td><td>Program that the plugin runs.</td></tr>
+    <tr><td><a href="#defaultimage"><code>DefaultImage</code></a></td><td>none</td><td>Image for steps that do not name one.</td></tr>
+    <tr><td><a href="#bind"><code>Bind</code></a></td><td>none</td><td>Bind paths for each container.</td></tr>
+    <tr><td><a href="#globalargs"><code>GlobalArgs</code></a></td><td>none</td><td>Arguments for <code>apptainer</code>, before <code>exec</code>.</td></tr>
+    <tr><td><a href="#execargs"><code>ExecArgs</code></a></td><td>none</td><td>Arguments for <code>apptainer exec</code>.</td></tr>
+    <tr><td><a href="#allowuserargs"><code>AllowUserArgs</code></a></td><td><code>yes</code></td><td>Permit <code>--apptainer-args</code>.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="executable">Executable</h2>
+<p>The program that the plugin runs in place of <code>apptainer</code>. The plugin searches a name without a directory in the <code>PATH</code> of the job, then in <code>/usr/local/bin:/usr/bin:/bin</code>.</p>
+<ul>
+  <li><strong>SingularityCE</strong> has the same command line. Set <code>Executable=singularity</code>.</li>
+  <li><strong>A wrapper of the site</strong> can prepare the environment and then start Apptainer. The plugin gives it the complete command line.</li>
+</ul>
+<pre data-lang="sh" data-title="/usr/local/libexec/apptainer-site">#!/bin/sh
+# Add the tools of the site to the PATH in each container.
+export APPTAINERENV_PREPEND_PATH=/opt/site/bin
+exec /usr/bin/apptainer "$@"</pre>
+<pre data-lang="conf" data-title="/etc/slurm/apptainer.conf">Executable=/usr/local/libexec/apptainer-site</pre>
+
+<h2 id="defaultimage">DefaultImage</h2>
+<p>The image for steps that do not name one. With this key, each task of the cluster runs in a container, unless the user selects <code>--container=none</code>.</p>
+<pre data-lang="conf">DefaultImage=/images/site-default.sif</pre>
+
+<h2 id="bind">Bind</h2>
+<p>Bind paths for each container, with commas between them, in the format of <code>apptainer exec --bind</code>. Users add paths with <code>--apptainer-bind</code> and leave out these paths with <code>--apptainer-no-default-binds</code>.</p>
+<pre data-lang="conf">Bind=/lustre,/cvmfs,/data/run7:/input:ro</pre>
+<p>To let batch scripts and tasks in a container use <code>srun</code>, bind the Slurm configuration, the socket of munge and the spool directory of slurmd. The image must have the Slurm commands of the same release.</p>
+<pre data-lang="conf">Bind=/etc/slurm,/run/munge,/var/spool/slurmd</pre>
+
+<h2 id="globalargs">GlobalArgs</h2>
+<p>Arguments for <code>apptainer</code> itself, before <code>exec</code>.</p>
+<pre data-lang="conf">GlobalArgs=--silent</pre>
+
+<h2 id="execargs">ExecArgs</h2>
+<p>Arguments for <code>apptainer exec</code>. They come before the bind paths and before the arguments of the user. The plugin splits the value into words like a shell does: single quotes keep a space in one argument.</p>
+<pre data-lang="conf">ExecArgs="--nv --env 'SITE=GSI Darmstadt'"</pre>
+
+<h2 id="allowuserargs">AllowUserArgs</h2>
+<p><code>AllowUserArgs=no</code> refuses <code>--apptainer-args</code> and its variables. A step with user arguments then fails with <code>--apptainer-args is not permitted on this cluster</code>.</p>
+<aside class="note">
+  <p>This key keeps the command line of all jobs uniform. It is not a security boundary: the plugin starts Apptainer as the user, and a user can also start Apptainer in a job without the plugin.</p>
+</aside>

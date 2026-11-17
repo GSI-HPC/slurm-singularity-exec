@@ -1,0 +1,46 @@
+<!--
+title: Steps of a job
+description: The steps of a job use the options of the job, and each step can replace them.
+-->
+<p class="lead">A step uses the options of its job. An option of <code>srun</code> replaces the value of the job for that step.</p>
+
+<figure class="diagram">
+  <svg viewBox="0 0 720 250" role="img" aria-label="The job exports its options as variables, and each srun reads them">
+    <rect class="d-box" x="10" y="20" width="220" height="70" rx="6"/>
+    <text class="d-label" x="26" y="46">sbatch / salloc</text>
+    <text class="d-code" x="26" y="70">--container=alma9.sif</text>
+    <path class="d-line" d="M230 55 H 300"/><path class="d-head" d="M292 49 L302 55 L292 61"/>
+    <rect class="d-box d-soft" x="302" y="10" width="408" height="230" rx="6"/>
+    <text class="d-label" x="318" y="36">Environment of the job</text>
+    <text class="d-code" x="318" y="62">SLURM_CONTAINER=alma9.sif</text>
+    <text class="d-code" x="318" y="82">SRUN_RUNTIME=apptainer</text>
+    <rect class="d-box" x="318" y="104" width="376" height="34" rx="5"/>
+    <text class="d-code" x="332" y="126">srun ./a</text><text class="d-note" x="682" y="126" text-anchor="end">runs in alma9.sif</text>
+    <rect class="d-box" x="318" y="148" width="376" height="34" rx="5"/>
+    <text class="d-code" x="332" y="170">srun --container=rocky8.sif ./b</text><text class="d-note" x="682" y="170" text-anchor="end">runs in rocky8.sif</text>
+    <rect class="d-box" x="318" y="192" width="376" height="34" rx="5"/>
+    <text class="d-code" x="332" y="214">srun --container=none ./c</text><text class="d-note" x="682" y="214" text-anchor="end">runs on the host</text>
+  </svg>
+  <figcaption>The job exports its options. Each <code>srun</code> reads them and can replace them.</figcaption>
+</figure>
+
+<h2 id="image">The image</h2>
+<pre data-lang="console">$ salloc --container=/images/alma9.sif -n4
+$ srun ./a                                    # in alma9.sif
+$ srun --container=/images/rocky8.sif ./b     # in rocky8.sif
+$ srun --container=none ./c                   # on the host</pre>
+<p>The same applies to the steps of a batch job. A batch script in a container needs the Slurm commands in the container, see <a href="batch-jobs.html#srun">srun in the batch script</a>.</p>
+
+<h2 id="binds">Bind paths and arguments</h2>
+<p>The same rule applies to <code>--apptainer-bind</code>, <code>--apptainer-args</code> and <code>--apptainer-no-default-binds</code>. A value of the step replaces the value of the job. It does not add to it.</p>
+<pre data-lang="console">$ salloc --container=/images/alma9.sif --apptainer-bind=/lustre
+$ srun ls /lustre                               # /lustre is there
+$ srun --apptainer-bind=/scratch ls /lustre     # only /scratch is there: error
+$ srun --apptainer-bind= ls /lustre             # no bind path of the job: error</pre>
+<p>An empty value removes the value of the job.</p>
+
+<h2 id="runtime">The runtime</h2>
+<p>A job that uses the plugin sets <code>SRUN_RUNTIME=apptainer</code> in its environment. Thus the steps of the job use the plugin too, also on a cluster where a different runtime is the default. A <code>--runtime</code> option of <code>srun</code> replaces it.</p>
+
+<h2 id="het">Heterogeneous jobs</h2>
+<p>Each component of a heterogeneous job can have its own options. The variables of a component have the suffix <code>_HET_GROUP_n</code>, for example <code>SLURM_CONTAINER_HET_GROUP_1</code>. <code>srun</code> does not read these variables: give the options to each <code>srun</code> in such a job.</p>

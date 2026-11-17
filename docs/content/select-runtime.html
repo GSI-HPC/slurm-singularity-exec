@@ -1,0 +1,50 @@
+<!--
+title: Select the runtime
+description: Make runtime/apptainer the default runtime of the cluster, or select it for one job.
+-->
+<p class="lead">Slurm uses one runtime plugin for each job. Make <code>runtime/apptainer</code> the default of the cluster, or let the users select it.</p>
+
+<h2 id="default">Default of the cluster</h2>
+<p>This is the recommended setup. All options of the plugin are then available in each command, without more steps for the user.</p>
+<pre data-lang="conf" data-title="/etc/slurm/slurm.conf">DefRuntimePlugin=runtime/apptainer</pre>
+<p>A job without <code>--container</code> runs as before: the plugin gives the task back to Slurm, which starts it on the host. Users can select a different runtime for a job, for example <code>--runtime=oci</code>.</p>
+
+<h2 id="environment">Environment of the users</h2>
+<p>If the default must stay <code>runtime/oci</code>, set these variables for the users who use Apptainer, for example in a module file or in <code>/etc/profile.d</code>.</p>
+<pre data-lang="sh">export SRUN_RUNTIME=apptainer SBATCH_RUNTIME=apptainer SALLOC_RUNTIME=apptainer</pre>
+
+<h2 id="option">Option of a command</h2>
+<p><code>--runtime=apptainer</code> selects the plugin for one command. In Slurm 26.11, this method has limits:</p>
+<table>
+  <thead><tr><th>Command line</th><th>Result</th></tr></thead>
+  <tbody>
+    <tr><td><code>srun --runtime=apptainer --container=IMAGE --apptainer-bind=/lustre</code></td><td>Works.</td></tr>
+    <tr><td><code>sbatch --runtime=apptainer --container=IMAGE</code></td><td>Works.</td></tr>
+    <tr><td><code>sbatch --runtime=apptainer --apptainer-bind=/lustre</code><br><code>salloc --runtime=apptainer --apptainer-bind=/lustre</code></td><td>Error: <code>unrecognized option</code>. The same occurs in <code>#SBATCH</code> lines. Use <code>SBATCH_RUNTIME</code> or <code>SALLOC_RUNTIME</code>, or the variable of the option, for example <code>SBATCH_APPTAINER_BIND</code>.</td></tr>
+    <tr><td><code>srun --container=IMAGE --runtime=apptainer</code></td><td><strong>The task runs on the host.</strong> Slurm gives <code>--container</code> to the runtime that is selected when it reads the option. Put <code>--runtime</code> first.</td></tr>
+  </tbody>
+</table>
+<p>These limits are in the option parser of Slurm, not in the plugin. They do not occur with the two methods above. See <a href="slurm-notes.html">Notes on Slurm 26.11</a>.</p>
+
+<h2 id="which">Which runtime does a job use</h2>
+<figure class="diagram">
+  <svg viewBox="0 0 720 190" role="img" aria-label="Precedence of the runtime selection">
+    <rect class="d-box d-accent" x="10" y="30" width="200" height="60" rx="6"/>
+    <text class="d-label" x="110" y="55" text-anchor="middle">--runtime=NAME</text>
+    <text class="d-note" x="110" y="75" text-anchor="middle">option of the command</text>
+    <path class="d-line" d="M210 60 H250"/><path class="d-head" d="M242 54 L252 60 L242 66"/>
+    <rect class="d-box" x="252" y="30" width="216" height="60" rx="6"/>
+    <text class="d-label" x="360" y="55" text-anchor="middle">SRUN_RUNTIME, ...</text>
+    <text class="d-note" x="360" y="75" text-anchor="middle">variable of the command</text>
+    <path class="d-line" d="M468 60 H508"/><path class="d-head" d="M500 54 L510 60 L500 66"/>
+    <rect class="d-box d-soft" x="510" y="30" width="200" height="60" rx="6"/>
+    <text class="d-label" x="610" y="55" text-anchor="middle">DefRuntimePlugin</text>
+    <text class="d-note" x="610" y="75" text-anchor="middle">slurm.conf</text>
+    <text class="d-note" x="10" y="130">The first one that is set wins.</text>
+    <text class="d-note" x="10" y="152">A job that uses the plugin sets SRUN_RUNTIME=apptainer for its steps.</text>
+  </svg>
+  <figcaption>Precedence of the runtime selection.</figcaption>
+</figure>
+<p>Slurm shows the runtime of a command with <code>-v</code>:</p>
+<pre data-lang="console">$ srun -v --container=/images/alma9.sif true 2>&amp;1 | grep runtime
+srun: runtime             : runtime/apptainer</pre>

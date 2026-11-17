@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{title}} · {{site}}</title>
+<meta name="description" content="{{description}}">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="preload" href="assets/fonts/IBMPlexSans-Regular.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/SpaceGrotesk-Variable.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="assets/site.css?v={{version}}">
+<script>
+  // Set the theme before the first paint.
+  try {
+    var theme = localStorage.getItem("theme");
+    if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
+  } catch (error) {}
+</script>
+</head>
+<body data-layout="{{layout}}" data-section="{{section}}">
+<a class="skip" href="#content">Skip to the content</a>
+
+<header class="top bp">
+  <div class="top-in">
+    <button type="button" class="icon-btn menu-btn" aria-label="Open the navigation" aria-expanded="false">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M3 5.5h14M3 10h14M3 14.5h14"/></svg>
+    </button>
+    <a class="brand" href="index.html"><span class="mark"><i></i></span>{{site}}</a>
+    <nav class="top-nav" aria-label="Sections">{{top_nav}}</nav>
+    <div class="top-right">
+      <button type="button" class="search-btn" aria-label="Search the documentation">
+        <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="9" cy="9" r="5.5"/><path d="M13.5 13.5L17 17"/></svg>
+        <span>Search</span><kbd>/</kbd>
+      </button>
+      <span class="pill">{{slurm}}</span>
+      <a class="pill" href="{{repo_tree}}">GitHub</a>
+      <button type="button" class="icon-btn theme-btn" aria-label="Switch between the light and the dark theme">
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M16.5 11.5A6.8 6.8 0 0 1 8.5 3.5a6.8 6.8 0 1 0 8 8z"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+  <nav class="side" aria-label="Pages">{{sidebar}}</nav>
+  <main id="content" class="main">
+    <div class="crumb">{{section}} <span>/</span> <b>{{page_title}}</b></div>
+    <h1 class="page-title">{{page_title}}</h1>
+    <div class="prose">
+{{body}}
+    </div>
+    <nav class="pager" aria-label="Previous and next page">{{pager}}</nav>
+    <footer class="foot">
+      <a href="{{edit}}">Edit this page on GitHub</a>
+      <span>{{site}} · GPL-3.0-or-later</span>
+    </footer>
+  </main>
+  <aside class="toc" aria-label="On this page"><div class="toc-in"><div class="toc-label">On this page</div>{{toc}}</div></aside>
+</div>
+
+<div class="search" hidden>
+  <div class="search-box" role="dialog" aria-modal="true" aria-label="Search the documentation">
+    <div class="search-field">
+      <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="9" cy="9" r="5.5"/><path d="M13.5 13.5L17 17"/></svg>
+      <input type="search" placeholder="Search the documentation" aria-label="Search" autocomplete="off" spellcheck="false">
+      <kbd>Esc</kbd>
+    </div>
+    <div class="search-results" role="listbox"></div>
+    <div class="search-foot"><span><kbd>↑</kbd><kbd>↓</kbd> select</span><span><kbd>Enter</kbd> open</span></div>
+  </div>
+</div>
+
+<script src="assets/site.js?v={{version}}" defer></script>
+</body>
+</html>

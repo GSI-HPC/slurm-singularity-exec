@@ -1,0 +1,69 @@
+<!--
+title: MPI
+description: MPI programs in a container connect to the PMIx server of the step.
+-->
+<p class="lead">An MPI program in a container starts with <code>srun</code>, as on the host. The plugin gives the tasks access to the PMIx server of the step.</p>
+
+<h2 id="run">Run an MPI program</h2>
+<pre data-lang="console">$ srun --mpi=pmix -N 4 -n 128 --container=/images/app.sif ./mpi_app</pre>
+<p>The image must have an MPI library with PMIx support, for example Open MPI. The MPI library of the image must be able to speak to the PMIx version of the cluster. See the <a href="https://docs.openpmix.org/">PMIx documentation</a> for the versions that work together.</p>
+<aside class="note"><p>If <code>MpiDefault=pmix</code> is in <code>slurm.conf</code>, <code>--mpi=pmix</code> is not necessary.</p></aside>
+
+<h2 id="how">How it works</h2>
+<p>For each step with PMIx, slurmstepd starts a PMIx server on each node. The server makes a socket and files, and the tasks find them with <code>PMIX_*</code> variables. For a task in a container, these files must be in the container at the same path.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 720 250" role="img" aria-label="The plugin binds the directory of the step with the PMIx files into the container">
+    <rect class="d-box d-soft" x="10" y="10" width="700" height="230" rx="6"/>
+    <text class="d-note" x="26" y="34">compute node</text>
+    <rect class="d-box" x="26" y="50" width="200" height="170" rx="6"/>
+    <text class="d-label" x="42" y="76">slurmstepd</text>
+    <text class="d-note" x="42" y="98">PMIx server of the step</text>
+    <text class="d-note" x="42" y="150">runtime/apptainer</text>
+    <text class="d-note" x="42" y="170">makes and removes</text>
+    <text class="d-note" x="42" y="190">the directory</text>
+    <rect class="d-box d-accent" x="262" y="92" width="196" height="86" rx="6"/>
+    <text class="d-label" x="276" y="118">directory of the step</text>
+    <text class="d-code" x="276" y="140">SlurmdSpoolDir/</text>
+    <text class="d-code" x="276" y="158">apptainer.JOB.STEP</text>
+    <path class="d-line" d="M226 135 H 260"/><path class="d-head" d="M252 129 L262 135 L252 141"/>
+    <rect class="d-box" x="494" y="50" width="200" height="170" rx="6"/>
+    <text class="d-label" x="510" y="76">container</text>
+    <text class="d-note" x="510" y="98">task with MPI library</text>
+    <text class="d-code" x="510" y="150">--bind</text>
+    <text class="d-note" x="510" y="170">same path as on</text>
+    <text class="d-note" x="510" y="190">the node</text>
+    <path class="d-line d-accent-line" d="M494 135 H 460"/><path class="d-head d-accent-line" d="M468 129 L458 135 L468 141"/>
+  </svg>
+  <figcaption>The PMIx server writes into the directory of the step. The task reads it in the container.</figcaption>
+</figure>
+<ul>
+  <li>The plugin makes one directory for each step in a container, in <code>SlurmdSpoolDir</code>. The user of the job owns it.</li>
+  <li>The PMIx plugin of Slurm puts its files there.</li>
+  <li>If the directory has files when a task starts, the plugin binds it into the container. A step without MPI gets no bind.</li>
+  <li>slurmstepd removes the directory at the end of the step.</li>
+</ul>
+<p>You do not have to add <code>SlurmdSpoolDir</code> to <code>Bind</code>. The option <code>--apptainer-no-default-binds</code> does not remove this bind.</p>
+
+<h2 id="sharens">Tasks on the same node</h2>
+<p>Apptainer without the setuid starter puts each container into its own user namespace. This causes problems for the MPI transports that share memory between the tasks of one node. The Apptainer documentation refers to <a href="https://github.com/apptainer/apptainer/issues/769">issue 769</a> for the details.</p>
+<p>The argument <code>--sharens</code> of <code>apptainer exec</code> puts the containers that one parent process starts into one user namespace, with one mount of the image:</p>
+<pre data-lang="console">$ srun --mpi=pmix -n 64 --container=/images/app.sif --apptainer-args=--sharens ./mpi_app</pre>
+<ul>
+  <li><strong>It works with the plugin.</strong> slurmstepd is the parent process of all tasks of a step on a node, and the plugin starts Apptainer with no process between them. The tasks of one step on one node share the namespace. Two steps do not.</li>
+  <li><strong>Use it for a job, not for the site.</strong> Do not put <code>--sharens</code> into <code>ExecArgs</code>. The tasks join the namespace of the task that started first. If that task ends before the other tasks start, the other tasks fail. An MPI program waits for all its tasks. A step with short, independent tasks does not.</li>
+  <li><strong>It is not necessary with the setuid starter</strong> of Apptainer, which uses no user namespace.</li>
+</ul>
+
+<h2 id="arguments">Arguments that stop MPI</h2>
+<p>Some arguments of <code>apptainer exec</code> isolate the container from the job. Do not use them for an MPI step, in <code>ExecArgs</code> or in <code>--apptainer-args</code>.</p>
+<table>
+  <thead><tr><th>Argument</th><th>Effect on an MPI step</th></tr></thead>
+  <tbody>
+    <tr><td><code>--cleanenv</code></td><td>Removes the <code>PMIX_*</code> variables. The task cannot find the PMIx server: <code>PMIx_Init</code> fails.</td></tr>
+    <tr><td><code>--containall</code></td><td>Includes <code>--cleanenv</code>, with the same effect.</td></tr>
+    <tr><td><code>--contain</code></td><td>Gives the container a minimal <code>/dev</code>. The devices of a fast network are not there, unless you bind them.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="network">Fast networks</h2>
+<p>The plugin adds no devices or libraries of the host to the container. If the MPI library needs them, for example for InfiniBand, add them with <code>Bind</code> or <code>ExecArgs</code> in <a href="configuration.html"><code>apptainer.conf</code></a>, or put the drivers into the image.</p>

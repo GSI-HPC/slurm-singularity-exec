@@ -1,0 +1,78 @@
+<!--
+title: Overview
+description: runtime/apptainer is a runtime plugin for Slurm 26.11 that starts the tasks of a job in an Apptainer container.
+layout: home
+-->
+<section class="hero bp">
+  <div class="wrap">
+    <div>
+      <div class="label">Runtime plugin · Slurm 26.11</div>
+      <h1>Slurm tasks in Apptainer. <span>Native in Slurm.</span></h1>
+      <p class="hero-lead"><code>--container</code> is an option of srun, sbatch and salloc. Slurm 26.11 starts Apptainer itself, through its runtime plugin interface, as the last step of the task launch.</p>
+      <div class="cta"><a class="btn primary" href="install.html">Get started</a><a class="btn" href="task-launch.html">Read the design →</a></div>
+      <div class="cmd"><span class="d">$</span><span>srun <b>--container</b>=/images/alma9.sif hostname</span></div>
+    </div>
+    <svg viewBox="0 0 610 446" fill="none" stroke="#f4f8ff" stroke-width="1.4" role="img" aria-label="The task launch in slurmstepd: the runtime plugin starts Apptainer as the last step">
+      <text x="0" y="14" font-size="10.5" fill="#a9c2ee" stroke="none" letter-spacing="2">DWG 00 · TASK LAUNCH IN SLURMSTEPD</text>
+      <rect x="0" y="40" width="170" height="92" rx="4"/>
+      <text x="14" y="62" font-size="10.5" fill="#a9c2ee" stroke="none" letter-spacing="1.5">SUBMIT HOST</text>
+      <text x="14" y="88" font-size="14" fill="#f4f8ff" stroke="none">srun --container</text>
+      <text x="14" y="110" font-size="12" fill="#a9c2ee" stroke="none">image + options</text>
+      <path d="M170 86 H 236"/><path d="M228 81 L236 86 L228 91"/>
+      <text x="178" y="76" font-size="10" fill="#a9c2ee" stroke="none">request</text>
+      <rect x="236" y="40" width="374" height="366" rx="4" stroke-dasharray="6 5"/>
+      <text x="250" y="62" font-size="10.5" fill="#a9c2ee" stroke="none" letter-spacing="1.5">COMPUTE NODE · SLURMSTEPD</text>
+      <rect x="262" y="80" width="200" height="38" rx="3"/><text x="276" y="104" font-size="13" fill="#f4f8ff" stroke="none">1  environment, MPI</text>
+      <rect x="262" y="134" width="200" height="38" rx="3"/><text x="276" y="158" font-size="13" fill="#f4f8ff" stroke="none">2  CPU binding, GPUs</text>
+      <rect x="262" y="198" width="200" height="38" rx="3"/><text x="276" y="222" font-size="13" fill="#f4f8ff" stroke="none">3  TaskProlog</text>
+      <rect x="262" y="252" width="200" height="38" rx="3"/><text x="276" y="276" font-size="13" fill="#f4f8ff" stroke="none">4  limits</text>
+      <rect x="262" y="326" width="322" height="58" rx="3" stroke="#ffc53d" stroke-width="2" fill="rgba(255,197,61,.10)"/>
+      <text x="276" y="350" font-size="13" fill="#ffc53d" stroke="none" font-weight="600">5  runtime_p_run</text>
+      <text x="276" y="371" font-size="12" fill="#f4f8ff" stroke="none">exec apptainer exec IMAGE COMMAND</text>
+      <path d="M362 118 V134"/><path d="M362 172 V198"/><path d="M362 236 V252"/><path d="M362 290 V326"/>
+      <path d="M357 318 L362 326 L367 318"/>
+      <g stroke="#a9c2ee" stroke-width="1">
+        <path d="M500 80 V290"/><path d="M494 80 H506"/><path d="M494 290 H506"/>
+        <path d="M462 80 H494" stroke-dasharray="2 4"/><path d="M462 290 H494" stroke-dasharray="2 4"/>
+      </g>
+      <text x="512" y="182" font-size="10.5" fill="#a9c2ee" stroke="none" letter-spacing="1">SAME AS</text>
+      <text x="512" y="198" font-size="10.5" fill="#a9c2ee" stroke="none" letter-spacing="1">ON THE HOST</text>
+      <text x="238" y="432" font-size="10.5" fill="#a9c2ee" stroke="none">1 to 4: as for each Slurm task. 5: the container starts.</text>
+    </svg>
+  </div>
+</section>
+
+<section class="section"><div class="wrap">
+  <div class="label">Why a runtime plugin</div>
+  <h2 id="why">Built on the interface that Slurm made for this.</h2>
+  <p class="sub">Slurm 26.11 adds runtime plugins. They register options in the commands and start the task as the last step of the launch. This plugin is the next generation of the SPANK plugin slurm-singularity-exec.</p>
+  <div class="cards">
+    <a class="card" href="options.html"><span class="no">01</span><div class="ico"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 6l4 4-4 4M10 14h6"/></svg></div><h3>Native options</h3><p><code>--container</code> is an option of srun, sbatch and salloc. The image shows in scontrol and in the job record.</p></a>
+    <a class="card" href="task-launch.html"><span class="no">02</span><div class="ico"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M10 3v14M4 8l6-5 6 5"/><path d="M5 17h10"/></svg></div><h3>The complete task launch</h3><p>Limits, <code>TaskProlog</code>, task prolog and <code>TMPDIR</code> apply to a task in a container as to a task on the host.</p></a>
+    <a class="card" href="steps.html"><span class="no">03</span><div class="ico"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="3" y="3" width="6" height="6" rx="1.4"/><rect x="11" y="11" width="6" height="6" rx="1.4"/><path d="M9 6h4a1 1 0 0 1 1 1v4"/></svg></div><h3>Steps follow the job</h3><p>A step runs in the image of its job. One step selects a different image, or none, with one option.</p></a>
+    <a class="card" href="mpi.html"><span class="no">04</span><div class="ico"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="5" cy="10" r="2.2"/><circle cx="15" cy="5" r="2.2"/><circle cx="15" cy="15" r="2.2"/><path d="M7 9l6-3M7 11l6 3"/></svg></div><h3>MPI with PMIx</h3><p>The tasks in the container connect to the PMIx server of the step. No bind path is necessary for this.</p></a>
+    <a class="card" href="configuration.html"><span class="no">05</span><div class="ico"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/><circle cx="7" cy="5" r="1.8" fill="currentColor"/><circle cx="13" cy="10" r="1.8" fill="currentColor"/><circle cx="9" cy="15" r="1.8" fill="currentColor"/></svg></div><h3>Site defaults</h3><p><code>apptainer.conf</code> sets bind paths, arguments, a default image and a wrapper program for the cluster.</p></a>
+    <a class="card" href="tests.html"><span class="no">06</span><div class="ico"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 10.5l4 4 8-9"/></svg></div><h3>Tested on real clusters</h3><p>52 end-to-end tests run on sind clusters with Slurm 26.11 on each push.</p></a>
+  </div>
+</div></section>
+
+<section class="section"><div class="wrap">
+  <div class="label">Quick start</div>
+  <h2 id="quick-start">From the source to the first job.</h2>
+  <p class="sub">The plugin compiles against the Slurm release that loads it. One parameter makes it the runtime of the cluster.</p>
+  <div class="split">
+    <ol class="steps">
+      <li><b>Build and install</b>Compile the plugin against the configured Slurm source tree, on the submit hosts and the compute nodes. <a href="install.html">Install</a></li>
+      <li><b>Select the runtime</b>Set <code>DefRuntimePlugin</code> in <code>slurm.conf</code>. <a href="select-runtime.html">Select the runtime</a></li>
+      <li><b>Set the site defaults</b>Put the bind paths of the cluster into <code>apptainer.conf</code>. <a href="configuration.html">Configuration</a></li>
+      <li><b>Run a job</b>Give an image to <code>srun</code>, <code>sbatch</code> or <code>salloc</code>. <a href="first-job.html">First job</a></li>
+    </ol>
+    <div>
+<pre data-lang="console">$ meson setup build -Dslurm_source=/usr/src/slurm --prefix=/usr --libdir=lib64
+$ meson install -C build</pre>
+<pre data-lang="conf" data-title="slurm.conf">DefRuntimePlugin=runtime/apptainer</pre>
+<pre data-lang="console">$ srun --container=/images/alma9.sif cat /etc/os-release
+$ sbatch --container=/images/alma9.sif job.sh</pre>
+    </div>
+  </div>
+</div></section>

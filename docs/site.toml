@@ -1,0 +1,27 @@
+# The pages of the documentation site and their sequence. docs/build.py
+# reads this file.
+title = "runtime/apptainer"
+tagline = "Slurm tasks in Apptainer"
+repo = "https://github.com/GSI-HPC/slurm-singularity-exec"
+branch = "runtime-apptainer"
+slurm = "Slurm 26.11"
+
+[[section]]
+name = "Get started"
+pages = ["install", "first-job"]
+
+[[section]]
+name = "Guide"
+pages = ["options", "batch-jobs", "steps", "binds", "mpi"]
+
+[[section]]
+name = "Administration"
+pages = ["configuration", "select-runtime", "migrate", "slurm-notes"]
+
+[[section]]
+name = "Reference"
+pages = ["reference"]
+
+[[section]]
+name = "Design"
+pages = ["task-launch", "data-flow", "tests"]

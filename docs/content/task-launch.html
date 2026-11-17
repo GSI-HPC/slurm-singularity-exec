@@ -1,0 +1,80 @@
+<!--
+title: Task launch
+description: Where the plugin runs in the task launch of slurmstepd, and why a task in a container behaves as a task on the host.
+-->
+<p class="lead">The plugin replaces only the last step of the task launch: the exec of the program. All steps before it run as for a task without a container.</p>
+
+<h2 id="sequence">The launch of one task</h2>
+<p><code>slurmstepd</code> starts one process for each task. Before the process becomes the program of the user, it does these steps, as the user of the job.</p>
+
+<figure class="diagram">
+  <svg viewBox="0 0 720 560" role="img" aria-label="The steps of the task launch in slurmstepd">
+    <text class="d-note" x="10" y="20">slurmstepd, process of the task</text>
+    <g>
+      <rect class="d-box d-soft" x="10" y="34" width="420" height="40" rx="5"/><text class="d-num" x="26" y="59">1</text><text class="d-label" x="50" y="59">Job environment</text><text class="d-note" x="418" y="59" text-anchor="end">SLURM_* variables</text>
+      <rect class="d-box d-soft" x="10" y="82" width="420" height="40" rx="5"/><text class="d-num" x="26" y="107">2</text><text class="d-label" x="50" y="107">Interconnect and MPI</text><text class="d-note" x="418" y="107" text-anchor="end">PMIx variables</text>
+      <rect class="d-box d-soft" x="10" y="130" width="420" height="40" rx="5"/><text class="d-num" x="26" y="155">3</text><text class="d-label" x="50" y="155">Task plugins</text><text class="d-note" x="418" y="155" text-anchor="end">CPU binding, cgroup</text>
+      <rect class="d-box d-soft" x="10" y="178" width="420" height="40" rx="5"/><text class="d-num" x="26" y="203">4</text><text class="d-label" x="50" y="203">GRES environment</text><text class="d-note" x="418" y="203" text-anchor="end">GPU variables</text>
+      <rect class="d-box d-warn" x="10" y="226" width="420" height="40" rx="5"/><text class="d-num" x="26" y="251">5</text><text class="d-label" x="50" y="251">SPANK task_init</text><text class="d-note" x="418" y="251" text-anchor="end">SPANK plugins</text>
+      <rect class="d-box" x="10" y="274" width="420" height="40" rx="5"/><text class="d-num" x="26" y="299">6</text><text class="d-label" x="50" y="299">TaskProlog</text><text class="d-note" x="418" y="299" text-anchor="end">script of the site</text>
+      <rect class="d-box" x="10" y="322" width="420" height="40" rx="5"/><text class="d-num" x="26" y="347">7</text><text class="d-label" x="50" y="347">--task-prolog</text><text class="d-note" x="418" y="347" text-anchor="end">script of the user</text>
+      <rect class="d-box" x="10" y="370" width="420" height="40" rx="5"/><text class="d-num" x="26" y="395">8</text><text class="d-label" x="50" y="395">TMPDIR and PATH search</text><text class="d-note" x="418" y="395" text-anchor="end">program of the task</text>
+      <rect class="d-box" x="10" y="418" width="420" height="40" rx="5"/><text class="d-num" x="26" y="443">9</text><text class="d-label" x="50" y="443">Limits</text><text class="d-note" x="418" y="443" text-anchor="end">ulimit values of the submit shell</text>
+      <rect class="d-box d-accent" x="10" y="480" width="420" height="56" rx="5"/><text class="d-num" x="26" y="505">10</text><text class="d-label" x="50" y="505">Runtime plugin: runtime_p_run</text><text class="d-code" x="50" y="525">exec apptainer exec IMAGE COMMAND</text>
+    </g>
+    <!-- old plugin -->
+    <path class="d-line d-warn-line" d="M430 246 H 470 V 60"/>
+    <path class="d-head d-warn-line" d="M464 68 L470 58 L476 68"/>
+    <text class="d-label" x="486" y="60">SPANK plugin</text>
+    <text class="d-note" x="486" y="80">slurm-singularity-exec called</text>
+    <text class="d-note" x="486" y="98">exec in step 5.</text>
+    <path class="d-line" d="M452 274 V 458"/><path class="d-line" d="M444 274 H452"/><path class="d-line" d="M444 458 H452"/>
+    <text class="d-label" x="486" y="356">Steps 6 to 9</text>
+    <text class="d-note" x="486" y="376">did not run for a task</text>
+    <text class="d-note" x="486" y="394">of the SPANK plugin.</text>
+    <text class="d-label" x="486" y="500">runtime/apptainer</text>
+    <text class="d-note" x="486" y="520">runs after all other steps.</text>
+  </svg>
+  <figcaption>The task launch in <code>exec_task()</code> of slurmstepd, Slurm 26.11.</figcaption>
+</figure>
+
+<h2 id="spank">What the SPANK plugin lost</h2>
+<p>A SPANK plugin has no hook for the exec of a task. <code>slurm-singularity-exec</code> used the last hook before it, <code>task_init</code>, and called exec there. The process became Apptainer in step 5, and slurmstepd did not do the steps after it:</p>
+<table>
+  <thead><tr><th>Step</th><th>Effect for a task in a container of the SPANK plugin</th></tr></thead>
+  <tbody>
+    <tr><td>TaskProlog</td><td>The script of the site did not run. Its variables and its output were not there.</td></tr>
+    <tr><td><code>--task-prolog</code></td><td>The script of the user did not run.</td></tr>
+    <tr><td>TMPDIR</td><td>Slurm did not make the directory.</td></tr>
+    <tr><td>Limits</td><td>The task had the limits of slurmd, not those of the submit shell.</td></tr>
+  </tbody>
+</table>
+<p>The SPANK plugin also started a shell script between Slurm and Apptainer, which built the command line from variables.</p>
+
+<h2 id="runtime">What the runtime interface changes</h2>
+<p>Slurm 26.11 adds runtime plugins. slurmstepd calls <code>runtime_p_run()</code> of the selected plugin at the point where it calls <code>execve()</code> for a task without a container. The plugin has two results:</p>
+<ul>
+  <li>It replaces the process with the container runtime. <code>runtime/apptainer</code> does this for a step with an image.</li>
+  <li>It returns <code>ESLURM_NOT_SUPPORTED</code>. slurmstepd then starts the program itself. <code>runtime/apptainer</code> does this for a step without an image.</li>
+</ul>
+<p>Thus the plugin is safe as the default runtime of a cluster: a job without <code>--container</code> does not change.</p>
+
+<h2 id="command">The command name</h2>
+<p>In step 8, slurmstepd replaces a command without a directory, for example <code>python3</code>, with the path of that program on the host. The image can have the program in a different directory, or only the image has it.</p>
+<p>The plugin keeps the command name as the user wrote it: slurmstepd calls <code>runtime_p_task_init()</code> before step 1, and the plugin stores the name there. It gives this name to Apptainer, which searches it in the <code>PATH</code> of the container.</p>
+
+<h2 id="proof">Proof</h2>
+<p>The end-to-end tests run a probe as a task in a container. The probe prints the properties that the SPANK plugin lost.</p>
+<pre data-lang="console">$ export WEIRD='a b"c$d'
+$ ulimit -S -s 4096
+$ srun --container=alpine.sif ./probe.sh
+os=alpine in=alpine.sif rank=0 tp=set stack=4096 weird=[a b"c$d] cwd=/home/alice</pre>
+<table>
+  <thead><tr><th>Word</th><th>Shows</th></tr></thead>
+  <tbody>
+    <tr><td><code>os=alpine</code></td><td>The task is in the image.</td></tr>
+    <tr><td><code>tp=set</code></td><td>The TaskProlog of the cluster set its variable.</td></tr>
+    <tr><td><code>stack=4096</code></td><td>The task has the stack limit of the submit shell.</td></tr>
+    <tr><td><code>weird=[a b"c$d]</code></td><td>A variable with a space, a quote and a dollar sign arrives without change.</td></tr>
+  </tbody>
+</table>

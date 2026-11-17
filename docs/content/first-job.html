@@ -1,0 +1,47 @@
+<!--
+title: First job
+description: Start a task in a container with srun, then a batch job with sbatch.
+-->
+<p class="lead">This page shows a task in a container, then a batch job. The examples use an AlmaLinux image at <code>/images/alma9.sif</code>.</p>
+
+<aside class="note">
+  <p>The examples are for a cluster where <code>runtime/apptainer</code> is the default runtime. If it is not, select it first: <code>export SRUN_RUNTIME=apptainer SBATCH_RUNTIME=apptainer SALLOC_RUNTIME=apptainer</code>. See <a href="select-runtime.html">Select the runtime</a>.</p>
+</aside>
+
+<h2 id="image">Get an image</h2>
+<p>Apptainer builds an image file from a container registry.</p>
+<pre data-lang="console">$ apptainer build alma9.sif docker://almalinux:9</pre>
+<p>Put the image on a file system that the compute nodes can read.</p>
+
+<h2 id="srun">Run a task</h2>
+<pre data-lang="console">$ srun --container=/images/alma9.sif cat /etc/redhat-release
+AlmaLinux release 9.6 (Sage Margay)</pre>
+<p>Each task of the step starts in a container of its own. The environment and the limits are those of a task without a container. The working directory is the same too, if the container has that directory.</p>
+<pre data-lang="console">$ srun -N2 -n4 --container=/images/alma9.sif hostname
+lxbk0719
+lxbk0719
+lxbk0720
+lxbk0720</pre>
+
+<h2 id="sbatch">Submit a batch job</h2>
+<p>With <code>--container</code>, the batch script runs in the container.</p>
+<pre data-lang="sh" data-title="job.sh">#!/bin/bash
+#SBATCH --container=/images/alma9.sif
+
+cat /etc/redhat-release     # the script is in the container
+./solver input.dat</pre>
+<pre data-lang="console">$ sbatch job.sh
+Submitted batch job 4711</pre>
+<p>To start steps with <code>srun</code> in the script, read <a href="batch-jobs.html#srun">srun in the batch script</a> first.</p>
+
+<h2 id="see">See the image of a job</h2>
+<p>Slurm keeps the image in the job record.</p>
+<pre data-lang="console">$ scontrol show job 4711 | grep Container
+   Container=/images/alma9.sif</pre>
+
+<h2 id="next">Next steps</h2>
+<ul>
+  <li><a href="options.html">Options</a>: all options and their variables.</li>
+  <li><a href="binds.html">Bind paths and arguments</a>: add directories of the host to the container.</li>
+  <li><a href="steps.html">Steps of a job</a>: use a different image for one step.</li>
+</ul>

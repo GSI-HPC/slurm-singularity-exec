@@ -1,0 +1,57 @@
+<!--
+title: Migrate from the SPANK plugin
+description: Differences between slurm-singularity-exec and runtime/apptainer, and the steps of a migration.
+-->
+<p class="lead"><code>runtime/apptainer</code> replaces the SPANK plugin <code>slurm-singularity-exec</code> on clusters with Slurm 26.11 or later. This page lists the differences.</p>
+
+<h2 id="users">For users</h2>
+<table>
+  <thead><tr><th>SPANK plugin</th><th>runtime/apptainer</th></tr></thead>
+  <tbody>
+    <tr><td><code>--singularity-container=IMAGE</code></td><td><code>--container=IMAGE</code></td></tr>
+    <tr><td><code>--singularity-container=</code> (empty, no container)</td><td><code>--container=none</code></td></tr>
+    <tr><td><code>--singularity-bind=SPEC</code></td><td><code>--apptainer-bind=SPEC</code></td></tr>
+    <tr><td><code>--singularity-args=ARGS</code></td><td><code>--apptainer-args=ARGS</code></td></tr>
+    <tr><td><code>--singularity-no-bind-defaults</code></td><td><code>--apptainer-no-default-binds</code></td></tr>
+    <tr><td><code>SLURM_SINGULARITY_CONTAINER</code></td><td><code>SRUN_CONTAINER</code>, <code>SBATCH_CONTAINER</code>, <code>SALLOC_CONTAINER</code></td></tr>
+    <tr><td><code>SLURM_SINGULARITY_BIND</code></td><td><code>SRUN_APPTAINER_BIND</code>, ...</td></tr>
+    <tr><td><code>SLURM_SINGULARITY_ARGS</code></td><td><code>SRUN_APPTAINER_ARGS</code>, ...</td></tr>
+    <tr><td><code>SLURM_SINGULARITY_GLOBAL</code></td><td>Not available for users. See <code>GlobalArgs</code>.</td></tr>
+    <tr><td><code>SLURM_SINGULARITY_DEBUG=true</code></td><td>Not available. The log of slurmd shows the command line at debug level.</td></tr>
+  </tbody>
+</table>
+<p>The plugin does not read the <code>SLURM_SINGULARITY_*</code> variables. Change them in job scripts and module files.</p>
+
+<h2 id="behaviour">Changes of behaviour</h2>
+<ul>
+  <li><strong>The task launch is complete.</strong> A task in a container now has the limits of the submit shell and the results of the <code>TaskProlog</code> and of <code>--task-prolog</code>. See <a href="task-launch.html">Task launch</a>.</li>
+  <li><strong>No message before the task.</strong> The SPANK wrapper printed <code>Start container image ...</code> to the output of each task. The plugin prints nothing.</li>
+  <li><strong>The image is in the job record.</strong> <code>scontrol show job</code> and the accounting show the image in the <code>Container</code> field.</li>
+  <li><strong>The steps of a job use the options of the job</strong>, and <code>srun --container=none</code> switches the container off for one step. See <a href="steps.html">Steps of a job</a>.</li>
+  <li><strong>MPI needs no bind path.</strong> The plugin binds the files of the PMIx server of the step into the container. The default <code>bind</code> of the SPANK plugin had the spool directory of slurmd for this. See <a href="mpi.html">MPI</a>.</li>
+  <li><strong>No shell between Slurm and Apptainer.</strong> The plugin starts Apptainer directly. Values with spaces and quotes arrive without change.</li>
+</ul>
+
+<h2 id="admins">For administrators</h2>
+<table>
+  <thead><tr><th>SPANK plugin, <code>plugstack.conf</code></th><th>runtime/apptainer, <code>apptainer.conf</code></th></tr></thead>
+  <tbody>
+    <tr><td><code>default=IMAGE</code></td><td><code>DefaultImage=IMAGE</code></td></tr>
+    <tr><td><code>bind=SPEC</code></td><td><code>Bind=SPEC</code></td></tr>
+    <tr><td><code>global=OPTIONS</code></td><td><code>GlobalArgs=OPTIONS</code></td></tr>
+    <tr><td><code>args="OPTIONS"</code></td><td><code>ExecArgs="OPTIONS"</code></td></tr>
+    <tr><td><code>args=disabled</code></td><td><code>AllowUserArgs=no</code></td></tr>
+    <tr><td><code>script=WRAPPER</code></td><td><code>Executable=WRAPPER</code>, with a different interface: see <a href="configuration.html#executable">Executable</a></td></tr>
+  </tbody>
+</table>
+
+<h2 id="steps">Steps of the migration</h2>
+<ol>
+  <li>Update the cluster to Slurm 26.11 or later.</li>
+  <li><a href="install.html">Build and install</a> the plugin for that Slurm release.</li>
+  <li>Write <a href="configuration.html">apptainer.conf</a> from the arguments of the SPANK plugin in <code>plugstack.conf</code>. The table above shows the keys.</li>
+  <li>If the wrapper script of the site has changes, move them into a wrapper for <code>Executable</code>. The new wrapper gets the complete command line of Apptainer as its arguments.</li>
+  <li>Set <code>DefRuntimePlugin=runtime/apptainer</code> in <code>slurm.conf</code>.</li>
+  <li>Remove the SPANK plugin from <code>plugstack.conf</code>. Do not use the two plugins for one job.</li>
+  <li>Tell the users the new option names.</li>
+</ol>

@@ -1,0 +1,54 @@
+<!--
+title: Batch jobs
+description: How sbatch runs the batch script and the steps of the job in a container.
+-->
+<p class="lead">With <code>--container</code>, <code>sbatch</code> runs the batch script in the container. The steps of the job use the same image.</p>
+
+<h2 id="script">The batch script</h2>
+<p>Set the options on the command line or in <code>#SBATCH</code> lines.</p>
+<pre data-lang="sh" data-title="job.sh">#!/bin/bash
+#SBATCH --container=/images/alma9.sif
+#SBATCH --apptainer-bind=/lustre
+
+cd /lustre/alice/run7
+./solver input.dat</pre>
+<p>Slurm stores the script in the spool directory of the compute node, which the image does not contain. The plugin binds the script into the container, read-only.</p>
+
+<aside class="note">
+  <p>The interpreter of the script, <code>/bin/bash</code> in the example, is a program of the image. An image without that interpreter cannot run the script.</p>
+</aside>
+
+<h2 id="srun">srun in the batch script</h2>
+<p>A batch script in a container can only use the programs of the container. To start steps, it needs <code>srun</code>. There are two ways to get it.</p>
+
+<h3 id="srun-host">Keep the script on the host</h3>
+<p>Do not give <code>--container</code> to <code>sbatch</code>. Set the image for the steps in the script. This works with each image.</p>
+<pre data-lang="sh" data-title="job.sh">#!/bin/bash
+#SBATCH --ntasks=8
+
+export SRUN_CONTAINER=/images/alma9.sif     # image of all steps
+srun ./solver input.dat                     # 8 tasks, each in the container
+srun --container=none hostname              # this step is on the host</pre>
+
+<h3 id="srun-image">Put Slurm in the container</h3>
+<p>The script can run in the container if the container has the Slurm commands of the cluster and can reach the Slurm daemons. This is a task for the administrator of the cluster and the author of the image:</p>
+<ul>
+  <li>The image has the Slurm commands, of the same release as the cluster.</li>
+  <li><a href="configuration.html#bind">Bind</a> in <code>apptainer.conf</code> adds the Slurm configuration, the socket of munge and the spool directory of slurmd to each container.</li>
+</ul>
+<pre data-lang="sh" data-title="job.sh">#!/bin/bash
+#SBATCH --container=/images/alma9-slurm.sif
+#SBATCH --ntasks=8
+
+srun ./solver input.dat     # the steps use the image of the job</pre>
+
+<h2 id="wrap">--wrap</h2>
+<pre data-lang="console">$ sbatch --container=/images/alma9.sif --wrap 'cat /etc/redhat-release'</pre>
+
+<h2 id="interactive">salloc</h2>
+<p><code>salloc</code> accepts the same options. The command that <code>salloc</code> starts runs on the submit host. The steps that it starts with <code>srun</code> run in the container.</p>
+<pre data-lang="console">$ salloc --container=/images/alma9.sif -n4
+salloc: Granted job allocation 4713
+$ srun cat /etc/redhat-release
+AlmaLinux release 9.6 (Sage Margay)</pre>
+<p>On a cluster with <code>LaunchParameters=use_interactive_step</code>, <code>salloc</code> starts a shell on a compute node as a step. That shell is then in the container.</p>

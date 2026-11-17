@@ -1,0 +1,97 @@
+<!--
+title: Reference
+description: All options, variables, configuration keys and the command line of the plugin.
+-->
+<p class="lead">All options, variables and configuration keys of <code>runtime/apptainer</code> on one page.</p>
+
+<h2 id="options">Options</h2>
+<p><code>srun</code>, <code>sbatch</code> and <code>salloc</code> have these options when the plugin is the runtime of the command.</p>
+<table>
+  <thead><tr><th>Option</th><th>Function</th></tr></thead>
+  <tbody>
+    <tr><td><code>--container=IMAGE</code></td><td>Run the tasks in this image. <code>IMAGE</code> is a path or a URI that <code>apptainer exec</code> accepts. <code>none</code> or an empty value selects no container.</td></tr>
+    <tr><td><code>--apptainer-bind=SPEC[,SPEC...]</code></td><td>Add bind paths. <code>SPEC</code> is <code>SRC[:DEST[:OPTS]]</code>, as for <code>apptainer exec --bind</code>. An empty value removes the bind paths of the job from a step.</td></tr>
+    <tr><td><code>--apptainer-args=ARGS</code></td><td>Add arguments to <code>apptainer exec</code>. The plugin splits <code>ARGS</code> into words with the quoting rules of a shell. The site can refuse this option.</td></tr>
+    <tr><td><code>--apptainer-no-default-binds</code></td><td>Leave out the bind paths of <code>Bind</code> in <code>apptainer.conf</code>.</td></tr>
+  </tbody>
+</table>
+<p>Slurm has these options to select the runtime:</p>
+<table>
+  <thead><tr><th>Option</th><th>Function</th></tr></thead>
+  <tbody>
+    <tr><td><code>--runtime=apptainer</code></td><td>Use this plugin for the command. Put it before the other options. See <a href="select-runtime.html">Select the runtime</a>.</td></tr>
+    <tr><td><code>--runtime=none</code></td><td>Use no runtime plugin.</td></tr>
+    <tr><td><code>--runtime=list</code></td><td>Print the runtime plugins of the cluster.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="input-variables">Input variables</h2>
+<p>Each option has an input variable for each command. An option on the command line has priority.</p>
+<table>
+  <thead><tr><th>Option</th><th>Input variable of srun, sbatch and salloc</th></tr></thead>
+  <tbody>
+    <tr><td><code>--container</code></td><td><code>SRUN_CONTAINER</code><br><code>SBATCH_CONTAINER</code><br><code>SALLOC_CONTAINER</code></td></tr>
+    <tr><td><code>--apptainer-bind</code></td><td><code>SRUN_APPTAINER_BIND</code><br><code>SBATCH_APPTAINER_BIND</code><br><code>SALLOC_APPTAINER_BIND</code></td></tr>
+    <tr><td><code>--apptainer-args</code></td><td><code>SRUN_APPTAINER_ARGS</code><br><code>SBATCH_APPTAINER_ARGS</code><br><code>SALLOC_APPTAINER_ARGS</code></td></tr>
+    <tr><td><code>--apptainer-no-default-binds</code></td><td><code>SRUN_APPTAINER_NO_DEFAULT_BINDS</code><br><code>SBATCH_APPTAINER_NO_DEFAULT_BINDS</code><br><code>SALLOC_APPTAINER_NO_DEFAULT_BINDS</code></td></tr>
+    <tr><td><code>--runtime</code></td><td><code>SRUN_RUNTIME</code><br><code>SBATCH_RUNTIME</code><br><code>SALLOC_RUNTIME</code></td></tr>
+  </tbody>
+</table>
+
+<h2 id="job-variables">Variables in a job</h2>
+<p>The plugin sets these variables in the environment of the job. <code>srun</code> in the job uses them as defaults for its steps.</p>
+<table>
+  <thead><tr><th>Variable</th><th>Value</th></tr></thead>
+  <tbody>
+    <tr><td><code>SLURM_CONTAINER</code></td><td>The image of the job.</td></tr>
+    <tr><td><code>SLURM_APPTAINER_BIND</code></td><td>The bind paths of the job.</td></tr>
+    <tr><td><code>SLURM_APPTAINER_ARGS</code></td><td>The Apptainer arguments of the job.</td></tr>
+    <tr><td><code>SLURM_APPTAINER_NO_DEFAULT_BINDS</code></td><td><code>1</code> if the job leaves out the bind paths of the site.</td></tr>
+    <tr><td><code>SRUN_RUNTIME</code></td><td><code>apptainer</code>, if the job selected the plugin and it is not the default runtime.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="conf">apptainer.conf</h2>
+<p>The file is in the directory of <code>slurm.conf</code>. It has the syntax of <code>slurm.conf</code>. All keys are optional, and the file itself is optional. See <a href="configuration.html">Configuration</a>.</p>
+<table>
+  <thead><tr><th>Key</th><th>Default</th><th>Function</th></tr></thead>
+  <tbody>
+    <tr><td><code>Executable</code></td><td><code>apptainer</code></td><td>The program that the plugin starts. A name without a directory is searched in the <code>PATH</code> of the job, then in the system directories.</td></tr>
+    <tr><td><code>DefaultImage</code></td><td>none</td><td>The image of steps that name none.</td></tr>
+    <tr><td><code>Bind</code></td><td>none</td><td>Bind paths for each container, comma-separated.</td></tr>
+    <tr><td><code>GlobalArgs</code></td><td>none</td><td>Arguments for <code>apptainer</code>, before <code>exec</code>.</td></tr>
+    <tr><td><code>ExecArgs</code></td><td>none</td><td>Arguments for <code>apptainer exec</code>, before those of the user.</td></tr>
+    <tr><td><code>AllowUserArgs</code></td><td><code>yes</code></td><td><code>no</code> refuses <code>--apptainer-args</code>.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="slurm-conf">slurm.conf</h2>
+<table>
+  <thead><tr><th>Parameter</th><th>Function</th></tr></thead>
+  <tbody>
+    <tr><td><code>DefRuntimePlugin=runtime/apptainer</code></td><td>Make the plugin the runtime of all commands. Recommended.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="command">The command line</h2>
+<p>For each task of a step with an image, the plugin starts this command, with the environment of the job:</p>
+<pre data-lang="sh">Executable [GlobalArgs] exec [ExecArgs]
+    [--bind SPEC]...    # Bind, unless --apptainer-no-default-binds
+    [--bind SCRIPT:SCRIPT:ro]    # the batch script, for the batch step
+    [--bind STEPDIR]    # the directory of the step, if it has files (PMIx)
+    [--bind SPEC]...    # --apptainer-bind
+    [ARGS]              # --apptainer-args
+    IMAGE COMMAND [ARGUMENT]...</pre>
+<p><code>SlurmdDebug=debug</code> writes the command line of each task to the log of slurmd.</p>
+
+<h2 id="errors">Errors</h2>
+<table>
+  <thead><tr><th>Message</th><th>Cause</th></tr></thead>
+  <tbody>
+    <tr><td><code>--apptainer-args is not permitted on this cluster</code></td><td><code>AllowUserArgs=no</code> is in <code>apptainer.conf</code>.</td></tr>
+    <tr><td><code>cannot find the program apptainer</code></td><td>Apptainer is not on the compute node, or <code>Executable</code> is wrong.</td></tr>
+    <tr><td><code>cannot build the command</code></td><td>A quote is not closed in <code>--apptainer-args</code>, <code>ExecArgs</code> or <code>GlobalArgs</code>.</td></tr>
+    <tr><td><code>cannot parse apptainer.conf</code></td><td>The file has a key that the plugin does not know, or a syntax error. The step does not start.</td></tr>
+    <tr><td><code>unrecognized option '--apptainer-bind'</code></td><td>The plugin is not the runtime of the command. See <a href="select-runtime.html">Select the runtime</a>.</td></tr>
+  </tbody>
+</table>

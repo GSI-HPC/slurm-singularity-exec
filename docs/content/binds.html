@@ -1,0 +1,51 @@
+<!--
+title: Bind paths and arguments
+description: Add directories of the host to the container and give arguments to apptainer exec.
+-->
+<p class="lead">A container sees the directories that Apptainer binds by default and the bind paths of the site. You can add bind paths and arguments for your job.</p>
+
+<h2 id="bind">--apptainer-bind</h2>
+<p>The value is a list of bind specifications, with commas between them. Each specification has the format of <code>apptainer exec --bind</code>: <code>src[:dest[:opts]]</code>.</p>
+<pre data-lang="console">$ srun --container=/images/alma9.sif --apptainer-bind=/lustre ls /lustre
+$ srun --container=/images/alma9.sif --apptainer-bind=/data/run7:/input:ro ls /input</pre>
+<p>If you give the option more than once on one command line, the lists add up.</p>
+<pre data-lang="console">$ srun --container=/images/alma9.sif \
+       --apptainer-bind=/lustre --apptainer-bind=/cvmfs,/scratch ./a</pre>
+
+<h2 id="default-binds">Bind paths of the site</h2>
+<p>The administrator can set bind paths for all containers with <a href="configuration.html#bind">Bind</a> in <code>apptainer.conf</code>. Your bind paths come after them on the command line of Apptainer.</p>
+<p><code>--apptainer-no-default-binds</code> leaves out the bind paths of the site for your job. The option without a value means <code>yes</code>.</p>
+<pre data-lang="console">$ srun --container=/images/alma9.sif --apptainer-no-default-binds ./a</pre>
+<p>This option does not change the directories that Apptainer binds by itself, such as the home directory. Use <code>--apptainer-args=--no-home</code> or <code>--apptainer-args=--contain</code> for that.</p>
+
+<h2 id="args">--apptainer-args</h2>
+<p>The value is a list of arguments for <code>apptainer exec</code>. The plugin splits it into words like a shell does, with single quotes, double quotes and the backslash. It does not expand variables.</p>
+<pre data-lang="console">$ srun --container=/images/cuda.sif --apptainer-args=--nv nvidia-smi
+$ srun --container=/images/alma9.sif --apptainer-args="--env GREETING='hello world'" ./a</pre>
+<p>If you give the option more than once on one command line, the arguments add up.</p>
+
+<aside class="note">
+  <p>A site can refuse this option with <a href="configuration.html#allowuserargs">AllowUserArgs=no</a>. The step then fails with <code>--apptainer-args is not permitted on this cluster</code>.</p>
+</aside>
+
+<h2 id="order">The command line of Apptainer</h2>
+<p>The plugin builds the command line in this sequence.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 720 150" role="img" aria-label="Sequence of the arguments of apptainer exec">
+    <g>
+      <rect class="d-box d-soft" x="10" y="30" width="96" height="44" rx="5"/><text class="d-code" x="58" y="57" text-anchor="middle">apptainer</text>
+      <rect class="d-box" x="112" y="30" width="96" height="44" rx="5"/><text class="d-code" x="160" y="57" text-anchor="middle">GlobalArgs</text>
+      <rect class="d-box d-soft" x="214" y="30" width="50" height="44" rx="5"/><text class="d-code" x="239" y="57" text-anchor="middle">exec</text>
+      <rect class="d-box" x="270" y="30" width="84" height="44" rx="5"/><text class="d-code" x="312" y="57" text-anchor="middle">ExecArgs</text>
+      <rect class="d-box" x="360" y="30" width="60" height="44" rx="5"/><text class="d-code" x="390" y="57" text-anchor="middle">Bind</text>
+      <rect class="d-box d-accent" x="426" y="30" width="60" height="44" rx="5"/><text class="d-code" x="456" y="57" text-anchor="middle">bind</text>
+      <rect class="d-box d-accent" x="492" y="30" width="60" height="44" rx="5"/><text class="d-code" x="522" y="57" text-anchor="middle">args</text>
+      <rect class="d-box d-accent" x="558" y="30" width="64" height="44" rx="5"/><text class="d-code" x="590" y="57" text-anchor="middle">IMAGE</text>
+      <rect class="d-box d-accent" x="628" y="30" width="82" height="44" rx="5"/><text class="d-code" x="669" y="57" text-anchor="middle">COMMAND</text>
+    </g>
+    <path class="d-line" d="M112 92 H420"/><text class="d-note" x="266" y="112" text-anchor="middle">site: apptainer.conf</text>
+    <path class="d-line d-accent-line" d="M426 92 H710"/><text class="d-note" x="568" y="112" text-anchor="middle">job: options of the user</text>
+  </svg>
+  <figcaption>The arguments of the site come first. For an option that Apptainer accepts more than once, the last value wins.</figcaption>
+</figure>
+<p>For a batch script, the plugin adds one more bind path: the script itself, read-only.</p>
