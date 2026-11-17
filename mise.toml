@@ -1,0 +1,103 @@
+# Toolchain and tasks of slurm-runtime-apptainer.
+#
+#   mise install        install the tools
+#   mise tasks          list the tasks
+#   mise run check      lint and unit tests, as CI runs them
+
+min_version = "2025.10.0"
+
+[tools]
+actionlint = "1.7.12"
+bats = "1.14.0"
+"github:GSI-HPC/sind" = "0.17.0"
+hadolint = "2.15.1"
+meson = "1.12.1"
+ninja = "1.13.2"
+shellcheck = "0.11.0"
+shfmt = "3.14.1"
+typos = "1.52.2"
+uv = "0.13.8"
+
+[settings]
+# meson is a Python package: install it with uv, not with pipx.
+pipx.uvx = true
+
+[env]
+# sind node image with Slurm 26.11 and Apptainer, which the image and e2e
+# tasks use. CI sets it to the image of the commit.
+NODE_IMAGE = "{{ get_env(name='NODE_IMAGE', default='ghcr.io/gsi-hpc/slurm-runtime-apptainer/sind-node:26.11') }}"
+
+[tasks.setup]
+description = "Configure the build directory of the unit tests"
+run = "meson setup build --reconfigure"
+
+[tasks.test]
+description = "Run the unit tests"
+depends = ["setup"]
+run = "meson test -C build --print-errorlogs"
+
+[tasks."test:sanitize"]
+description = "Run the unit tests with the address and undefined behaviour sanitizers"
+run = [
+  "meson setup build-sanitize --reconfigure -Db_sanitize=address,undefined",
+  "meson test -C build-sanitize --print-errorlogs",
+]
+
+[tasks."lint:shell"]
+description = "Check the shell scripts and the bats tests"
+run = [
+  "shellcheck -x tests/e2e/*.sh tests/e2e/*.bash tests/e2e/*.bats tests/e2e/fixtures/*.sh",
+  "shfmt -d -i 2 -ci tests/e2e/*.sh tests/e2e/*.bash tests/e2e/*.bats tests/e2e/fixtures/*.sh",
+]
+
+[tasks."lint:workflows"]
+description = "Check the GitHub Actions workflows"
+run = "actionlint"
+
+[tasks."lint:image"]
+description = "Check the Dockerfiles"
+run = "hadolint image/Dockerfile tests/e2e/Dockerfile"
+
+[tasks."lint:spelling"]
+description = "Check the spelling"
+run = "typos"
+
+[tasks.lint]
+description = "Run all linters"
+depends = ["lint:*"]
+
+[tasks.check]
+description = "Run the linters and the unit tests"
+depends = ["lint", "test"]
+
+[tasks.image]
+description = "Build the sind node image with Slurm 26.11 and Apptainer (tag: NODE_IMAGE)"
+run = 'docker buildx build --load --tag "$NODE_IMAGE" image'
+
+[tasks.e2e]
+description = "Run the end-to-end tests on a new sind cluster, then delete the cluster"
+run = "tests/e2e/run.sh"
+
+[tasks."e2e:image"]
+description = "Build the node image of the end-to-end tests: NODE_IMAGE with the plugin"
+run = "tests/e2e/run.sh image"
+
+[tasks."e2e:up"]
+description = "Create the sind cluster of the end-to-end tests"
+run = "tests/e2e/run.sh up"
+
+[tasks."e2e:test"]
+description = "Run the end-to-end tests on the sind cluster (arguments go to bats)"
+run = "tests/e2e/run.sh test"
+
+[tasks."e2e:logs"]
+description = "Write the Slurm logs of the cluster nodes to .e2e/logs"
+run = "tests/e2e/run.sh logs"
+
+[tasks."e2e:summary"]
+description = "Print the failed end-to-end tests and the errors of slurmd"
+run = "tests/e2e/run.sh summary"
+
+[tasks."e2e:down"]
+description = "Delete the sind cluster of the end-to-end tests"
+run = "tests/e2e/run.sh down"
